@@ -1,232 +1,403 @@
-import { useState, useEffect } from 'react';
-import { getAssignments, submitAssignment, getStudentSubmissions } from '../../services/assignmentService';
-import { toast } from 'react-toastify';
-import { 
-  ClipboardDocumentListIcon, 
-  ArrowTopRightOnSquareIcon, 
-  PaperClipIcon,
-  DocumentArrowUpIcon,
-  CheckCircleIcon,
-  ClockIcon
-} from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { format, isPast, formatDistanceToNow } from 'date-fns';
-import useAuth from '../../hooks/useAuth';
 import SubmissionModal from '../../components/student/SubmissionModal';
+import { 
+  ClipboardDocumentListIcon,
+  ArrowDownTrayIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  ClockIcon, 
+  PaperAirplaneIcon,
+  ArrowTopRightOnSquareIcon 
+} from '@heroicons/react/24/outline';
+import { format, isPast, formatDistanceToNow } from 'date-fns';
 
-const AssignmentView = () => {
-  const { user } = useAuth();
+export default function AssignmentView() {
   const [assignments, setAssignments] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [submissions, setSubmissions] = useState({});
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { id } = useParams();
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchAssignments = async () => {
       try {
-        // For students, only get assignments for their batch
-        const assignmentsData = user.role === 'student' 
-          ? await getAssignments(user.batch)
-          : await getAssignments();
+        setLoading(true);
+        const { data } = await axios.get('/api/assignments');
+        setAssignments(data);
         
-        // Get student's submissions
-        const submissionsData = await getStudentSubmissions();
+        // Get submissions for each assignment
+        const submissionsData = {};
+        await Promise.all(data.map(async (assignment) => {
+          try {
+            const res = await axios.get(`/api/assignments/${assignment._id}/submissions`);
+            submissionsData[assignment._id] = res.data;
+          } catch (err) {
+            console.error(`Error fetching submissions for assignment ${assignment._id}:`, err);
+          }
+        }));
         
-        setAssignments(assignmentsData);
         setSubmissions(submissionsData);
-      } catch (error) {
-        console.error('Error fetching assignments:', error);
-        toast.error('Failed to fetch assignments');
+        
+        // If ID is provided in URL, select that specific assignment
+        if (id) {
+          const assignment = data.find(a => a._id === id);
+          if (assignment) {
+            setSelectedAssignment(assignment);
+            // Log the view
+            await axios.post(`/api/logs/assignment/${id}/view`);
+          }
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch assignments');
+        console.error('Error fetching assignments:', err);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchData();
-  }, [user]);
-  
-  const handleSubmitClick = (assignment) => {
-    setSelectedAssignment(assignment);
-    setIsModalOpen(true);
-  };
-  
-  const handleSubmit = async (files) => {
-    if (!files || files.length === 0) {
-      toast.error('Please select at least one file to submit');
-      return;
-    }
-    
+
+    fetchAssignments();
+  }, [id]);
+
+  const handleAssignmentClick = async (assignment) => {
     try {
+      setSelectedAssignment(assignment);
+      // Log the view
+      await axios.post(`/api/logs/assignment/${assignment._id}/view`);
+    } catch (err) {
+      console.error('Error logging assignment view:', err);
+    }
+  };
+
+  const handleDownload = async (e, assignment) => {
+    e.stopPropagation();
+    try {
+      window.open(assignment.fileUrl, '_blank');
+      // Log the download
+      await axios.post(`/api/logs/assignment/${assignment._id}/download`);
+    } catch (err) {
+      console.error('Error downloading assignment:', err);
+    }
+  };
+
+  const handleSubmitAssignment = () => {
+    if (selectedAssignment) {
+      setShowSubmitModal(true);
+    }
+  };
+
+  const handleSubmit = async (files) => {
+    try {
+      setLoading(true);
+      
+      // Create form data
       const formData = new FormData();
       files.forEach(file => {
         formData.append('files', file);
       });
       
-      const submission = await submitAssignment(selectedAssignment._id, formData);
+      // Submit assignment
+      const { data } = await axios.post(
+        `/api/assignments/${selectedAssignment._id}/submit`, 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
       
-      // Update submissions state
-      setSubmissions([...submissions, submission]);
+      // Update submissions
+      setSubmissions(prev => ({
+        ...prev,
+        [selectedAssignment._id]: data
+      }));
       
-      setIsModalOpen(false);
-      toast.success('Assignment submitted successfully');
-    } catch (error) {
-      console.error('Error submitting assignment:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit assignment');
+      setShowSubmitModal(false);
+    } catch (err) {
+      console.error('Error submitting assignment:', err);
+      alert(err.response?.data?.message || 'Failed to submit assignment');
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const getSubmissionForAssignment = (assignmentId) => {
-    return submissions.find(submission => submission.assignment._id === assignmentId);
-  };
-  
-  const getDeadlineStatus = (deadline) => {
-    const deadlineDate = new Date(deadline);
-    if (isPast(deadlineDate)) {
-      return { status: 'passed', text: 'Deadline passed' };
-    } else {
-      return { 
-        status: 'upcoming', 
-        text: `Due in ${formatDistanceToNow(deadlineDate)}` 
-      };
-    }
-  };
-  
+
+  // Filter assignments based on search term
   const filteredAssignments = assignments.filter(assignment => 
     assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    assignment.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (assignment.description && assignment.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-  
+
+  // Sort assignments by deadline (closest first)
+  const sortedAssignments = [...filteredAssignments].sort((a, b) => {
+    return new Date(a.deadline) - new Date(b.deadline);
+  });
+
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner fullScreen />;
   }
-  
+
+  if (error) {
+    return (
+      <div className="bg-red-900 bg-opacity-20 border border-red-500 text-red-400 p-4 rounded-md">
+        {error}
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Assignments</h1>
-      
-      {/* Search */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Search for assignments..."
-          className="input w-full"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)]">
+      {/* Assignment List Sidebar */}
+      <div className="w-full lg:w-1/3 bg-gray-800 rounded-xl p-4 overflow-hidden flex flex-col lg:mr-4 mb-4 lg:mb-0">
+        <div className="mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search assignments..."
+              className="w-full bg-gray-700 rounded-md py-2 pl-4 pr-10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <h2 className="text-lg font-medium text-white mb-4">Assignments</h2>
+        
+        {sortedAssignments.length > 0 ? (
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {sortedAssignments.map((assignment) => {
+              const isSubmitted = submissions[assignment._id];
+              const isDeadlinePassed = isPast(new Date(assignment.deadline));
+              const canSubmit = !isDeadlinePassed || assignment.allowResubmission;
+              
+              return (
+                <div 
+                  key={assignment._id} 
+                  className={`p-3 rounded-lg cursor-pointer ${
+                    selectedAssignment && selectedAssignment._id === assignment._id 
+                      ? 'bg-primary-900 bg-opacity-20 border border-primary-500' 
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  onClick={() => handleAssignmentClick(assignment)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start">
+                      <ClipboardDocumentListIcon className="h-5 w-5 text-primary-400 mt-0.5 mr-2 flex-shrink-0" />
+                      <div>
+                        <h3 className="text-sm font-medium text-white">{assignment.title}</h3>
+                        <div className="flex items-center mt-1">
+                          <ClockIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className={`text-xs ${
+                            isDeadlinePassed ? 'text-red-400' : 'text-gray-400'
+                          }`}>
+                            {isDeadlinePassed 
+                              ? `Deadline passed: ${format(new Date(assignment.deadline), 'MMM dd, yyyy')}`
+                              : `Due: ${format(new Date(assignment.deadline), 'MMM dd, yyyy')}`
+                            }
+                          </span>
+                        </div>
+                        
+                        {/* Submission status */}
+                        <div className="mt-1 flex items-center">
+                          {isSubmitted ? (
+                            <CheckCircleIcon className="h-3 w-3 mr-1 text-green-500" />
+                          ) : (
+                            <XCircleIcon className="h-3 w-3 mr-1 text-red-500" />
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {isSubmitted ? 'Submitted' : 'Not submitted'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-gray-400 text-center">
+              {searchTerm ? 'No assignments match your search.' : 'No assignments available.'}
+            </p>
+          </div>
+        )}
       </div>
       
-      {/* Assignments grid */}
-      {filteredAssignments.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAssignments.map((assignment) => {
-            const submission = getSubmissionForAssignment(assignment._id);
-            const deadlineInfo = getDeadlineStatus(assignment.deadline);
-            
-            return (
-              <div key={assignment._id} className="card flex flex-col">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center">
-                    <ClipboardDocumentListIcon className="h-6 w-6 text-green-400 mr-2" />
-                    <h2 className="text-lg font-semibold">{assignment.title}</h2>
-                  </div>
-                </div>
-                
-                <p className="text-gray-400 text-sm mb-4 flex-grow">
-                  {assignment.description || 'No description provided'}
-                </p>
-                
-                <div className="mb-4">
-                  <div className="text-sm text-gray-400">Deadline</div>
-                  <div className="flex items-center">
-                    <span>{format(new Date(assignment.deadline), 'MMM dd, yyyy h:mm a')}</span>
-                    <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      deadlineInfo.status === 'passed' 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {deadlineInfo.status === 'passed' 
-                        ? <ClockIcon className="h-3 w-3 mr-1" /> 
-                        : <ClockIcon className="h-3 w-3 mr-1" />}
-                      {deadlineInfo.text}
+      {/* Assignment Detail View */}
+      <div className="flex-1 bg-gray-800 rounded-xl overflow-hidden flex flex-col">
+        {selectedAssignment ? (
+          <>
+            <div className="p-4 border-b border-gray-700">
+              <h1 className="text-xl font-bold text-white">{selectedAssignment.title}</h1>
+              
+              <div className="flex items-center mt-2 text-sm text-gray-400">
+                <ClockIcon className="h-4 w-4 mr-1" />
+                <span className={`${isPast(new Date(selectedAssignment.deadline)) ? 'text-red-400' : ''}`}>
+                  Due: {format(new Date(selectedAssignment.deadline), 'MMMM dd, yyyy h:mm a')}
+                  {!isPast(new Date(selectedAssignment.deadline)) && (
+                    <span className="ml-2 text-primary-400">
+                      ({formatDistanceToNow(new Date(selectedAssignment.deadline), { addSuffix: true })})
                     </span>
-                  </div>
+                  )}
+                </span>
+              </div>
+              
+              <div className="flex flex-wrap items-center justify-between mt-4">
+                <div className="mb-2">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 bg-opacity-20 text-blue-400">
+                    Max Score: {selectedAssignment.maxMarks}
+                  </span>
+                  
+                  {selectedAssignment.allowResubmission && (
+                    <span className="ml-2 px-2 py-1 text-xs font-medium rounded-full bg-green-900 bg-opacity-20 text-green-400">
+                      Resubmission Allowed
+                    </span>
+                  )}
                 </div>
                 
-                {submission && (
-                  <div className="mb-4">
-                    <div className="text-sm text-gray-400">Submission Status</div>
+                <div className="flex space-x-2">
+                  {selectedAssignment.fileUrl && (
+                    <a
+                      href={selectedAssignment.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
+                      onClick={() => axios.post(`/api/logs/assignment/${selectedAssignment._id}/download`)}
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                      Download Instructions
+                    </a>
+                  )}
+                  
+                  <button
+                    onClick={handleSubmitAssignment}
+                    disabled={isPast(new Date(selectedAssignment.deadline)) && !selectedAssignment.allowResubmission}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <PaperAirplaneIcon className="h-4 w-4 mr-1" />
+                    {submissions[selectedAssignment._id] ? 'Resubmit' : 'Submit Assignment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 overflow-y-auto flex-1">
+              {/* Assignment Description */}
+              <div className="mb-6">
+                <h2 className="text-lg font-medium text-white mb-2">Description</h2>
+                <div className="bg-gray-700 rounded-lg p-4 text-gray-300 whitespace-pre-wrap">
+                  {selectedAssignment.description || 'No description provided.'}
+                </div>
+              </div>
+              
+              {/* Submission Status */}
+              <div>
+                <h2 className="text-lg font-medium text-white mb-2">Submission Status</h2>
+                
+                {submissions[selectedAssignment._id] ? (
+                  <div className="bg-gray-700 rounded-lg p-4">
                     <div className="flex items-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        submission.status === 'graded'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        <CheckCircleIcon className="h-3 w-3 mr-1" />
-                        {submission.status === 'graded' ? 'Graded' : 'Submitted'}
+                      <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                      <span className="text-white font-medium">
+                        Submitted on {format(new Date(submissions[selectedAssignment._id].submittedAt), 'MMMM dd, yyyy h:mm a')}
                       </span>
-                      {submission.status === 'graded' && (
-                        <span className="ml-2">
-                          Score: {submission.score}/{assignment.maxScore}
-                        </span>
-                      )}
                     </div>
-                    {submission.feedback && (
-                      <div className="mt-2">
-                        <div className="text-sm text-gray-400">Feedback</div>
-                        <p className="text-sm">{submission.feedback}</p>
+                    
+                    {submissions[selectedAssignment._id].status === 'late' && (
+                      <div className="mt-2 text-yellow-400 flex items-center">
+                        <ClockIcon className="h-4 w-4 mr-1" />
+                        <span>Late submission</span>
                       </div>
+                    )}
+                    
+                    {submissions[selectedAssignment._id].status === 'graded' && (
+                      <div className="mt-4 p-3 bg-gray-800 rounded">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-gray-300">Grade:</span>
+                          <span className="text-primary-400 font-bold">
+                            {submissions[selectedAssignment._id].marks}/{selectedAssignment.maxMarks}
+                          </span>
+                        </div>
+                        
+                        {submissions[selectedAssignment._id].feedback && (
+                          <div>
+                            <span className="text-gray-300">Feedback:</span>
+                            <p className="mt-1 text-white">{submissions[selectedAssignment._id].feedback}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <h3 className="text-white font-medium mt-4 mb-2">Submitted Files:</h3>
+                    <ul className="space-y-2">
+                      {submissions[selectedAssignment._id].files.map((file, index) => (
+                        <li key={index} className="bg-gray-800 rounded p-2 flex items-center justify-between">
+                          <div className="flex items-center">
+                            <DocumentIcon className="h-5 w-5 text-gray-400 mr-2" />
+                            <span className="text-gray-300">{file.fileName}</span>
+                          </div>
+                          <a
+                            href={file.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-400 hover:text-primary-300"
+                          >
+                            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="bg-gray-700 rounded-lg p-4 text-center">
+                    <XCircleIcon className="h-8 w-8 mx-auto text-gray-500 mb-2" />
+                    <p className="text-gray-300">You haven't submitted this assignment yet.</p>
+                    {isPast(new Date(selectedAssignment.deadline)) && !selectedAssignment.allowResubmission ? (
+                      <p className="text-red-400 mt-2">The deadline has passed and resubmission is not allowed.</p>
+                    ) : (
+                      <button
+                        onClick={handleSubmitAssignment}
+                        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                      >
+                        <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                        Submit Now
+                      </button>
                     )}
                   </div>
                 )}
-                
-                <div className="flex space-x-2 mt-auto">
-                  <a
-                    href={assignment.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-secondary flex-1 flex items-center justify-center"
-                  >
-                    <ArrowTopRightOnSquareIcon className="h-5 w-5 mr-1" />
-                    View
-                  </a>
-                  
-                  {user.role === 'student' && deadlineInfo.status !== 'passed' && (
-                    (!submission || assignment.allowResubmission) && (
-                      <button
-                        onClick={() => handleSubmitClick(assignment)}
-                        className="btn-primary flex-1 flex items-center justify-center"
-                      >
-                        <PaperClipIcon className="h-5 w-5 mr-1" />
-                        {submission ? 'Resubmit' : 'Submit'}
-                      </button>
-                    )
-                  )}
-                </div>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center text-gray-400 py-8">
-          {searchTerm 
-            ? 'No assignments found matching your search'
-            : 'No assignments available for you at the moment'}
-        </div>
-      )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <ClipboardDocumentListIcon className="h-16 w-16 text-gray-500 mb-4" />
+            <h2 className="text-xl font-medium text-white mb-2">No Assignment Selected</h2>
+            <p className="text-gray-400 text-center max-w-md">
+              Select an assignment from the list to view details and submit your work.
+            </p>
+          </div>
+        )}
+      </div>
       
       {/* Submission Modal */}
-      {isModalOpen && selectedAssignment && (
+      {showSubmitModal && selectedAssignment && (
         <SubmissionModal
           assignment={selectedAssignment}
           onSubmit={handleSubmit}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => setShowSubmitModal(false)}
         />
       )}
     </div>
   );
-};
-
-export default AssignmentView;
+}

@@ -4,44 +4,53 @@ const assignmentSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-    trim: true,
+    trim: true
   },
   description: {
     type: String,
-    trim: true,
+    trim: true
+  },
+  fileUrl: {
+    type: String
+  },
+  filePath: {
+    type: String
+  },
+  fileName: {
+    type: String
+  },
+  fileSize: {
+    type: Number
   },
   batch: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Batch',
-    required: true,
+    required: true
+  },
+  deadline: {
+    type: Date,
+    required: true
+  },
+  maxMarks: {
+    type: Number,
+    required: true
+  },
+  allowResubmission: {
+    type: Boolean,
+    default: true
   },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
-  deadline: {
+  createdAt: {
     type: Date,
-    required: true,
+    default: Date.now
   },
-  allowResubmission: {
-    type: Boolean,
-    default: true,
-  },
-  fileUrl: {
-    type: String,
-    required: true,
-  },
-  fileName: {
-    type: String,
-    required: true,
-  },
-  previewUrl: {
-    type: String,
-  },
-  maxScore: {
-    type: Number,
-    default: 100,
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true

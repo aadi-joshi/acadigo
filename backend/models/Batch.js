@@ -4,32 +4,37 @@ const batchSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true,
+    unique: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
   },
   trainer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-  },
-  description: {
-    type: String,
-    trim: true,
+    required: true
   },
   startDate: {
     type: Date,
-    default: Date.now,
+    required: true
   },
   endDate: {
-    type: Date,
+    type: Date
   },
-  isActive: {
+  active: {
     type: Boolean,
-    default: true,
+    default: true
   },
-  students: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }]
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
 }, {
   timestamps: true
 });

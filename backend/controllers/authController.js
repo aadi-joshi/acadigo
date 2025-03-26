@@ -66,7 +66,6 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    // User is already available in req.user from the protect middleware
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -77,5 +76,62 @@ exports.getMe = async (req, res) => {
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ message: 'Server error while fetching user data' });
+  }
+};
+
+// @desc    Register user (admin only)
+// @route   POST /api/auth/register
+// @access  Private (admin)
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password, role, batch } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    // Create user
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      batch: role === 'student' ? batch : undefined
+    });
+
+    res.status(201).json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        batch: user.batch
+      }
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({
+      message: 'Server error during registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Logout user (clear cookie)
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = async (req, res) => {
+  try {
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      message: 'Server error during logout',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };

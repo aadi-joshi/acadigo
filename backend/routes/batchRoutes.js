@@ -1,22 +1,38 @@
 const express = require('express');
-const router = express.Router();
-const { 
+const {
   getBatches,
   getBatch,
   createBatch,
   updateBatch,
   deleteBatch,
+  getBatchStudents,
   addStudentToBatch,
   removeStudentFromBatch
 } = require('../controllers/batchController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/auth');
 
-router.get('/', protect, getBatches);
-router.get('/:id', protect, getBatch);
-router.post('/', protect, authorize('admin', 'trainer'), createBatch);
-router.put('/:id', protect, authorize('admin', 'trainer'), updateBatch);
-router.delete('/:id', protect, authorize('admin', 'trainer'), deleteBatch);
-router.post('/:id/students', protect, authorize('admin', 'trainer'), addStudentToBatch);
-router.delete('/:id/students/:studentId', protect, authorize('admin', 'trainer'), removeStudentFromBatch);
+const router = express.Router();
+
+// All routes require authentication
+router.use(protect);
+
+// Routes for admins and trainers
+router.get('/', authorize('admin', 'trainer'), getBatches);
+
+// Create batch - admin only
+router.post('/', authorize('admin'), createBatch);
+
+// Batch routes with ID
+router.route('/:id')
+  .get(authorize('admin', 'trainer', 'student'), getBatch)
+  .put(authorize('admin', 'trainer'), updateBatch)
+  .delete(authorize('admin'), deleteBatch);
+
+// Batch student management
+router.route('/:id/students')
+  .get(authorize('admin', 'trainer'), getBatchStudents)
+  .post(authorize('admin', 'trainer'), addStudentToBatch);
+
+router.delete('/:id/students/:studentId', authorize('admin', 'trainer'), removeStudentFromBatch);
 
 module.exports = router;

@@ -20,8 +20,14 @@ export default {
           800: '#075985',
           900: '#0c4a6e',
         },
-      }
+        gray: {
+          750: '#1f2937', // Custom gray shade between 700 and 800
+        }
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/line-clamp'),
+  ],
 }

@@ -4,36 +4,45 @@ const pptSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-    trim: true,
+    trim: true
   },
   description: {
     type: String,
-    trim: true,
+    trim: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  filePath: {
+    type: String,
+    required: true
+  },
+  fileName: {
+    type: String,
+    required: true
+  },
+  fileSize: {
+    type: Number,
+    required: true
   },
   batch: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Batch',
-    required: true,
+    required: true
   },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
-  fileUrl: {
-    type: String,
-    required: true,
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  fileName: {
-    type: String,
-    required: true,
-  },
-  previewUrl: {
-    type: String,
-  },
-  accessCount: {
-    type: Number,
-    default: 0
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true

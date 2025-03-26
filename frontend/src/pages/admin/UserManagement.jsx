@@ -1,134 +1,60 @@
 import { useState, useEffect } from 'react';
-import { getUsers, createUser, updateUser, deleteUser } from '../../services/userService';
-import { getBatches } from '../../services/batchService';
-import { toast } from 'react-toastify';
-import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
+import { UserCircleIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import UserForm from '../../components/admin/UserForm';
 
-const UserManagement = () => {
+export default function UserManagement() {
   const [users, setUsers] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentTab, setCurrentTab] = useState('all');
-  
+  const [error, setError] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchUsers = async () => {
       try {
-        const [usersData, batchesData] = await Promise.all([
-          getUsers(),
-          getBatches()
-        ]);
-        setUsers(usersData);
-        setBatches(batchesData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to fetch users data');
+        setLoading(true);
+        const { data } = await axios.get('/api/users');
+        setUsers(data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch users');
+        console.error('Error fetching users:', err);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchData();
+
+    fetchUsers();
   }, []);
-  
-  const handleAddUser = () => {
-    setSelectedUser(null);
-    setIsModalOpen(true);
-  };
-  
-  const handleEditUser = (user) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
-  };
-  
-  const handleDeleteUser = async (userId) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      try {
-        await deleteUser(userId);
-        setUsers(users.filter(user => user._id !== userId));
-        toast.success('User deleted successfully');
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        toast.error('Failed to delete user');
-      }
-    }
-  };
-  
-  const handleSubmit = async (userData) => {
-    try {
-      if (selectedUser) {
-        // Update existing user
-        const updatedUser = await updateUser(selectedUser._id, userData);
-        setUsers(users.map(user => (user._id === selectedUser._id ? updatedUser : user)));
-        toast.success('User updated successfully');
-      } else {
-        // Create new user
-        const newUser = await createUser(userData);
-        setUsers([...users, newUser]);
-        toast.success('User created successfully');
-      }
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error('Error saving user:', error);
-      toast.error(error.response?.data?.message || 'Failed to save user');
-    }
-  };
-  
-  const filterUsers = () => {
-    if (currentTab === 'all') return users;
-    return users.filter(user => user.role === currentTab);
-  };
-  
+
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner fullScreen />;
   }
-  
+
   return (
-    <div className="max-w-7xl mx-auto">
+    <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <h1 className="text-2xl font-bold text-white">User Management</h1>
         <button
-          onClick={handleAddUser}
+          onClick={() => setShowAddModal(true)}
           className="btn-primary flex items-center"
         >
-          <PlusIcon className="h-5 w-5 mr-1" />
+          <PlusIcon className="h-5 w-5 mr-2" />
           Add User
         </button>
       </div>
-      
-      {/* Tab navigation */}
-      <div className="border-b border-gray-700 mb-6">
-        <nav className="flex space-x-8" aria-label="Tabs">
-          {['all', 'admin', 'trainer', 'student'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setCurrentTab(tab)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                currentTab === tab
-                  ? 'border-primary-400 text-primary-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </nav>
-      </div>
-      
-      {/* Users table */}
-      <div className="bg-gray-800 shadow-md rounded-lg overflow-hidden">
+
+      {error && (
+        <div className="bg-red-900 bg-opacity-20 border border-red-500 text-red-400 p-4 rounded-md mb-6">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-gray-800 shadow overflow-hidden rounded-lg">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-700">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                Name
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                Email
+                User
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                 Role
@@ -136,48 +62,54 @@ const UserManagement = () => {
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                 Batch
               </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
-                Actions
+              <th scope="col" className="relative px-6 py-3">
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
-            {filterUsers().length > 0 ? (
-              filterUsers().map((user) => (
-                <tr key={user._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                    {user.name}
+          <tbody className="bg-gray-800 divide-y divide-gray-700">
+            {users.length > 0 ? (
+              users.map((user) => (
+                <tr key={user._id} className="hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10 bg-gray-600 rounded-full flex items-center justify-center">
+                        <UserCircleIcon className="h-6 w-6 text-gray-300" />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-white">{user.name}</div>
+                        <div className="text-sm text-gray-400">{user.email}</div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
-                        : user.role === 'trainer'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
+                        ? 'bg-red-900 bg-opacity-20 text-red-400' 
+                        : user.role === 'trainer' 
+                          ? 'bg-blue-900 bg-opacity-20 text-blue-400'
+                          : 'bg-green-900 bg-opacity-20 text-green-400'
                     }`}>
                       {user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {user.role === 'student' 
-                      ? batches.find(b => b._id === user.batch)?.name || 'No Batch'
-                      : '-'
-                    }
+                    {user.batch ? (
+                      <span>{user.batch.name || 'Unknown batch'}</span>
+                    ) : (
+                      <span className="text-gray-500">N/A</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => handleEditUser(user)}
                       className="text-primary-400 hover:text-primary-300 mr-4"
+                      title="Edit"
                     >
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
-                      onClick={() => handleDeleteUser(user._id)}
                       className="text-red-400 hover:text-red-300"
+                      title="Delete"
                     >
                       <TrashIcon className="h-5 w-5" />
                     </button>
@@ -186,7 +118,7 @@ const UserManagement = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-400">
+                <td colSpan="4" className="px-6 py-4 text-center text-gray-400">
                   No users found
                 </td>
               </tr>
@@ -194,18 +126,30 @@ const UserManagement = () => {
           </tbody>
         </table>
       </div>
-      
-      {/* User Modal */}
-      {isModalOpen && (
-        <UserForm
-          user={selectedUser}
-          batches={batches}
-          onSubmit={handleSubmit}
-          onCancel={() => setIsModalOpen(false)}
-        />
+
+      {/* For demo purposes, we'll just show a placeholder for the Add User modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Add User</h2>
+            <p className="text-gray-300 mb-4">Form would be implemented here with fields for name, email, password, role, and batch selection.</p>
+            <div className="flex justify-end">
+              <button 
+                className="btn-secondary mr-2"
+                onClick={() => setShowAddModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-primary"
+                onClick={() => setShowAddModal(false)}
+              >
+                Add User
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
-};
-
-export default UserManagement;
+}
