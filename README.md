@@ -80,13 +80,6 @@
 
 ## 🔄 User Flow Diagram
 
-To render the user flow diagram, you'll need to use a Markdown renderer that supports Mermaid diagrams. Here are a few options:
-
-1. **GitHub**: GitHub supports Mermaid diagrams natively in Markdown files.
-2. **VS Code**: Install the "Markdown Preview Mermaid Support" extension.
-3. **Online Markdown Editors**: Use services like Markdown Preview Enhanced or GitHub-flavored Markdown editors.
-
-Diagram Code:
 ```mermaid
 graph TD
     %% Login Flow
