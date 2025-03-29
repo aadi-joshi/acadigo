@@ -3,7 +3,10 @@ const nodemailer = require('nodemailer');
 // Create transporter
 let transporter;
 
-if (process.env.NODE_ENV === 'production') {
+// Allow forcing email sending in development with an environment variable
+const shouldSendRealEmails = process.env.NODE_ENV === 'production' || process.env.FORCE_SEND_EMAILS === 'true';
+
+if (shouldSendRealEmails) {
   transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE,
     auth: {
@@ -42,14 +45,15 @@ const sendEmail = async (to, subject, text, template, data = {}) => {
       html,
     };
     
-    await transporter.sendMail(message);
-    return { success: true };
+    // Add debugging info
+    console.log(`Attempting to send email to: ${to}`);
+    
+    const info = await transporter.sendMail(message);
+    console.log(`Email ${shouldSendRealEmails ? 'sent' : 'would be sent'} with ID: ${info?.messageId || 'N/A'}`);
+    return { success: true, info };
   } catch (error) {
     console.error('Email sending error:', error);
-    if (process.env.NODE_ENV !== 'production') {
-      return { success: false, error };
-    }
-    throw error;
+    return { success: false, error: error.message };
   }
 };
 
