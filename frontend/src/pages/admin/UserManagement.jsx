@@ -1,41 +1,109 @@
 import { useState, useEffect } from 'react';
+import { UserCircleIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
-import { UserCircleIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
+import UserForm from '../../components/admin/UserForm';
+import { toast } from 'react-toastify';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [batches, setBatches] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
+  // Fetch users and batches on component mount
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get('/api/users');
-        setUsers(data);
+        
+        // Fetch users
+        const usersResponse = await axios.get('/api/users');
+        setUsers(usersResponse.data);
+        
+        // Fetch batches for dropdown in form
+        const batchesResponse = await axios.get('/api/batches');
+        setBatches(batchesResponse.data);
+        
+        setLoading(false);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch users');
-        console.error('Error fetching users:', err);
-      } finally {
+        console.error('Error fetching data:', err);
+        setError(err.response?.data?.message || 'An error occurred while fetching data');
         setLoading(false);
       }
     };
-
-    fetchUsers();
+    
+    fetchData();
   }, []);
 
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => {
+    const searchFields = `${user.name} ${user.email} ${user.role}`.toLowerCase();
+    return searchFields.includes(searchTerm.toLowerCase());
+  });
+
+  const handleCreateUser = () => {
+    setCurrentUser(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditUser = (user) => {
+    setCurrentUser(user);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await axios.delete(`/api/users/${userId}`);
+        setUsers(users.filter(user => user._id !== userId));
+        toast.success('User deleted successfully');
+      } catch (err) {
+        console.error('Error deleting user:', err);
+        toast.error(err.response?.data?.message || 'Error deleting user');
+      }
+    }
+  };
+
+  const handleFormSubmit = async (userData) => {
+    try {
+      if (currentUser) {
+        // Update existing user
+        const response = await axios.put(`/api/users/${currentUser._id}`, userData);
+        setUsers(users.map(user => user._id === currentUser._id ? response.data : user));
+        toast.success('User updated successfully');
+      } else {
+        // Create new user
+        const response = await axios.post('/api/users', userData);
+        setUsers([...users, response.data]);
+        toast.success('User created successfully');
+      }
+      
+      setIsFormOpen(false);
+    } catch (err) {
+      console.error('Error saving user:', err);
+      toast.error(err.response?.data?.message || 'Error saving user');
+    }
+  };
+
   if (loading) {
-    return <LoadingSpinner fullScreen />;
+    return (
+      <div className="py-6 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-center">
+          <div className="loader"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div className="py-6 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white">User Management</h1>
+        <h1 className="text-2xl font-semibold text-white">User Management</h1>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleCreateUser}
           className="btn-primary flex items-center"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
@@ -48,6 +116,16 @@ export default function UserManagement() {
           {error}
         </div>
       )}
+
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search users..."
+          className="input w-full max-w-md"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
 
       <div className="bg-gray-800 shadow overflow-hidden rounded-lg">
         <table className="min-w-full divide-y divide-gray-700">
@@ -68,8 +146,8 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
-            {users.length > 0 ? (
-              users.map((user) => (
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -102,12 +180,14 @@ export default function UserManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
+                      onClick={() => handleEditUser(user)}
                       className="text-primary-400 hover:text-primary-300 mr-4"
                       title="Edit"
                     >
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
+                      onClick={() => handleDeleteUser(user._id)}
                       className="text-red-400 hover:text-red-300"
                       title="Delete"
                     >
@@ -127,29 +207,13 @@ export default function UserManagement() {
         </table>
       </div>
 
-      {/* For demo purposes, we'll just show a placeholder for the Add User modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Add User</h2>
-            <p className="text-gray-300 mb-4">Form would be implemented here with fields for name, email, password, role, and batch selection.</p>
-            <div className="flex justify-end">
-              <button 
-                className="btn-secondary mr-2"
-                onClick={() => setShowAddModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn-primary"
-                onClick={() => setShowAddModal(false)}
-              >
-                Add User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UserForm 
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleFormSubmit}
+        user={currentUser}
+        batches={batches}
+      />
     </div>
   );
 }

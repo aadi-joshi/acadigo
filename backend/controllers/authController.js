@@ -3,11 +3,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ActivityLog = require('../models/ActivityLog');
 
-// Generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRY || '7d'
-  });
+// Function to generate JWT token
+const generateToken = (user) => {
+  return jwt.sign(
+    { 
+      id: user._id,
+      role: user.role  // Make sure role is included in the token
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRY || '7d' }
+  );
 };
 
 // @desc    Login user
@@ -45,7 +50,7 @@ exports.login = async (req, res) => {
     console.log('Password verified successfully');
 
     // Create token
-    const token = generateToken(user._id);
+    const token = generateToken(user);
 
     // Update last login time
     user.lastLogin = new Date();

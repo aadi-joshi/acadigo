@@ -6,7 +6,26 @@ const Batch = require('../models/Batch');
 // @access  Private (admin)
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find().populate('batch', 'name');
+    let query = {};
+    
+    // Filter by role if specified
+    if (req.query.role) {
+      query.role = req.query.role;
+    }
+    
+    // Filter unassigned students if requested
+    if (req.query.unassigned === 'true' && req.query.role === 'student') {
+      // Students with no batch or students not in the specified excludeBatch
+      const orConditions = [{ batch: { $exists: false } }, { batch: null }];
+      
+      if (req.query.excludeBatch) {
+        orConditions.push({ batch: { $ne: req.query.excludeBatch } });
+      }
+      
+      query.$or = orConditions;
+    }
+    
+    const users = await User.find(query).populate('batch', 'name');
     
     res.status(200).json(users);
   } catch (error) {

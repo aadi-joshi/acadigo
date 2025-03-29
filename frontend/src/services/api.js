@@ -1,31 +1,42 @@
 import axios from 'axios';
 
-// Create axios instance with base URL
+// Create a base API instance with default configuration
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: '/api',
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
-// Add interceptor to add auth token to requests
+// Add a request interceptor to include auth token in every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
+// Add a response interceptor to handle common response errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Log the error for debugging
-    console.error('API Error:', error.response?.data || error.message);
+    const { response } = error;
+    
+    // Handle authentication errors
+    if (response && response.status === 401) {
+      // Clear invalid tokens
+      localStorage.removeItem('token');
+      
+      // Redirect to login if not already there
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );

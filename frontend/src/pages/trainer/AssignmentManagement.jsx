@@ -9,43 +9,104 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { assignments, batches } from '../../utils/mockData';
+import AssignmentForm from '../../components/trainer/AssignmentForm';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export default function AssignmentManagement() {
   const [loading, setLoading] = useState(true);
   const [assignmentList, setAssignmentList] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [error, setError] = useState(null);
-  
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [currentAssignment, setCurrentAssignment] = useState(null);
+
   useEffect(() => {
-    // Simulate fetching assignments
-    const fetchAssignments = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Fetch assignments
+        const assignmentsRes = await axios.get('/api/assignments');
+        setAssignmentList(assignmentsRes.data);
         
-        setAssignmentList(assignments);
+        // Fetch batches
+        const batchesRes = await axios.get('/api/batches');
+        setBatches(batchesRes.data);
+        
+        setLoading(false);
       } catch (err) {
-        setError(err.message || 'Failed to fetch assignments');
-      } finally {
+        setError(err.response?.data?.message || 'Failed to fetch data');
+        console.error('Error fetching data:', err);
         setLoading(false);
       }
     };
     
-    fetchAssignments();
+    fetchData();
   }, []);
-  
+
   // Filter assignments by selected batch
   const filteredAssignments = selectedBatch === 'all'
     ? assignmentList
-    : assignmentList.filter(a => a.batch._id === selectedBatch);
-  
+    : assignmentList.filter(a => a.batch?._id === selectedBatch);
+
+  const handleCreateAssignment = () => {
+    setCurrentAssignment(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditAssignment = (assignment) => {
+    setCurrentAssignment(assignment);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    if (window.confirm('Are you sure you want to delete this assignment?')) {
+      try {
+        await axios.delete(`/api/assignments/${assignmentId}`);
+        setAssignmentList(assignmentList.filter(a => a._id !== assignmentId));
+        toast.success('Assignment deleted successfully');
+      } catch (err) {
+        console.error('Error deleting assignment:', err);
+        toast.error(err.response?.data?.message || 'Error deleting assignment');
+      }
+    }
+  };
+
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (currentAssignment) {
+        // Update existing assignment
+        const response = await axios.put(`/api/assignments/${currentAssignment._id}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        setAssignmentList(assignmentList.map(a => a._id === currentAssignment._id ? response.data : a));
+        toast.success('Assignment updated successfully');
+      } else {
+        // Create new assignment
+        const response = await axios.post('/api/assignments', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        setAssignmentList([...assignmentList, response.data]);
+        toast.success('Assignment created successfully');
+      }
+      
+      setIsFormOpen(false);
+    } catch (err) {
+      console.error('Error saving assignment:', err);
+      toast.error(err.response?.data?.message || 'Error saving assignment');
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner fullScreen />;
   }
-  
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -65,7 +126,10 @@ export default function AssignmentManagement() {
             ))}
           </select>
           
-          <button className="btn-primary flex items-center">
+          <button 
+            onClick={handleCreateAssignment}
+            className="btn-primary flex items-center"
+          >
             <PlusIcon className="h-5 w-5 mr-2" />
             Create Assignment
           </button>
@@ -146,12 +210,14 @@ export default function AssignmentManagement() {
                         <CheckBadgeIcon className="h-5 w-5" />
                       </Link>
                       <button
+                        onClick={() => handleEditAssignment(assignment)}
                         className="text-primary-400 hover:text-primary-300 mr-4"
                         title="Edit"
                       >
                         <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
+                        onClick={() => handleDeleteAssignment(assignment._id)}
                         className="text-red-400 hover:text-red-300"
                         title="Delete"
                       >
@@ -173,12 +239,23 @@ export default function AssignmentManagement() {
               "You haven't created any assignments yet." : 
               "No assignments available for the selected batch."}
           </p>
-          <button className="mt-4 btn-primary flex items-center mx-auto">
+          <button 
+            onClick={handleCreateAssignment}
+            className="mt-4 btn-primary flex items-center mx-auto"
+          >
             <PlusIcon className="h-5 w-5 mr-2" />
             Create Your First Assignment
           </button>
         </div>
       )}
+
+      <AssignmentForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleFormSubmit}
+        assignment={currentAssignment}
+        batches={batches}
+      />
     </div>
   );
 }

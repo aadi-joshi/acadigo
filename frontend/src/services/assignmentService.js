@@ -30,6 +30,7 @@ export const deleteAssignment = async (id) => {
 };
 
 export const submitAssignment = async (assignmentId, formData) => {
+  // The formData should include all the files from the frontend form
   const response = await api.post(`/assignments/${assignmentId}/submit`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',

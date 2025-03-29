@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import useAuth from '../../hooks/useAuth';
+import AuthContext from '../../context/AuthContext';
 
 const BatchForm = ({ batch, onSubmit, onCancel }) => {
-  const { user } = useAuth();
+  const { user } = useContext(AuthContext);
   
   const {
     register,

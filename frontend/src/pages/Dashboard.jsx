@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import useAuth from '../hooks/useAuth';
-import axios from 'axios';
+import api from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AuthContext from '../context/AuthContext';
 import { 
   DocumentTextIcon, 
   ClipboardDocumentListIcon,
@@ -14,8 +14,9 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [data, setData] = useState({
     ppts: [],
     assignments: [],
@@ -28,20 +29,26 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get('/api/dashboard');
-        setData(data);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
+        // Make API call to get dashboard data
+        const response = await api.get('/dashboard');
+        setData(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again later.');
         setLoading(false);
       }
     };
-
+    
     fetchDashboardData();
   }, []);
 
   if (loading) {
     return <LoadingSpinner fullScreen />;
+  }
+
+  if (error) {
+    return <div className="text-red-500 text-center p-4">{error}</div>;
   }
 
   // Render dashboard based on user role
@@ -53,7 +60,13 @@ export default function Dashboard() {
     case 'student':
       return <StudentDashboard data={data} />;
     default:
-      return <div>Invalid user role</div>;
+      return (
+        <div className="text-center p-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Welcome to Acadigo</h2>
+          <p className="text-gray-400 mb-4">Your role hasn't been properly assigned.</p>
+          <p className="text-gray-400">Please contact an administrator for assistance.</p>
+        </div>
+      );
   }
 }
 

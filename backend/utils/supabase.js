@@ -1,94 +1,86 @@
 const { createClient } = require('@supabase/supabase-js');
-const path = require('path');
+require('dotenv').config();
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const bucketName = process.env.SUPABASE_BUCKET_NAME || 'acadigo';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
-// Create Supabase client
-const supabase = createClient(supabaseUrl, supabaseKey);
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Supabase credentials not found in environment variables');
+  process.exit(1);
+}
 
-// Upload file to Supabase Storage
-exports.uploadFile = async (file, folder = '', user = null) => {
-  if (!file) {
-    throw new Error('No file provided');
-  }
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Main storage bucket name
+const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'acadigo';
+
+/**
+ * Upload a file to Supabase Storage
+ * @param {Object} file - File object with buffer and originalname
+ * @param {String} path - Path within the bucket to store the file
+ * @param {Object} user - User object with role information
+ * @returns {Object} - Upload result with path and URL
+ */
+exports.uploadFile = async (file, path, user) => {
   try {
-    // If it's a student submission, ensure it goes to submissions folder
-    if (user && user.role === 'student' && folder !== 'submissions') {
-      folder = 'submissions';
+    // Ensure the path is appropriate based on user role
+    let finalPath = path;
+    if (user && user.role === 'student') {
+      // Ensure student uploads go to submissions folder
+      if (!finalPath.startsWith('submissions/')) {
+        finalPath = `submissions/${finalPath}`;
+      }
     }
     
-    // Create filename with timestamp to ensure uniqueness
-    const filename = `${folder}/${Date.now()}-${file.originalname}`;
+    // Create the full path
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.originalname.replace(/\s+/g, '_')}`;
+    const fullPath = `${finalPath}/${fileName}`;
     
-    // Upload file to Supabase storage
+    // Upload file to Supabase
     const { data, error } = await supabase.storage
-      .from(bucketName)
-      .upload(filename, file.buffer, {
+      .from(BUCKET_NAME)
+      .upload(fullPath, file.buffer, {
         contentType: file.mimetype,
-        upsert: true
+        cacheControl: '3600'
       });
-
-    if (error) {
-      console.error('Error uploading to Supabase:', error);
-      throw new Error('Failed to upload file to storage');
-    }
-
-    // Get the public URL
-    const { data: publicUrlData } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(filename);
-
-    const fileUrl = publicUrlData.publicUrl;
     
-    // Create preview URL for documents if necessary
-    let previewUrl = null;
-    const ext = path.extname(file.originalname).toLowerCase();
+    if (error) throw error;
     
-    if (['.pdf', '.ppt', '.pptx', '.doc', '.docx'].includes(ext)) {
-      previewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-    }
-
+    // Get public URL for the file
+    const { data: urlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(fullPath);
+    
     return {
-      fileUrl,
-      fileName: file.originalname, 
-      filePath: filename,
-      fileSize: file.size,
-      previewUrl
+      fileName: file.originalname,
+      filePath: fullPath,
+      fileUrl: urlData.publicUrl,
+      fileSize: file.size
     };
   } catch (error) {
     console.error('File upload error:', error);
-    throw new Error('Failed to upload file');
+    throw new Error(`Error uploading file: ${error.message}`);
   }
 };
 
-// Delete file from Supabase Storage
-exports.deleteFile = async (fileUrl) => {
+/**
+ * Delete a file from Supabase Storage
+ * @param {String} path - Full path to the file in the bucket
+ * @returns {Object} - Deletion result
+ */
+exports.deleteFile = async (path) => {
   try {
-    if (!fileUrl) return;
-    
-    // Extract filename from the URL - adjust this based on your Supabase URL format
-    const urlParts = fileUrl.split(bucketName + '/');
-    if (urlParts.length < 2) return;
-    
-    const filename = urlParts[1];
-    
-    // Delete the file
     const { data, error } = await supabase.storage
-      .from(bucketName)
-      .remove([filename]);
+      .from(BUCKET_NAME)
+      .remove([path]);
     
-    if (error) {
-      console.error('Error deleting file from Supabase:', error);
-      return false;
-    }
+    if (error) throw error;
     
-    return true;
+    return { success: true };
   } catch (error) {
-    console.error('Error deleting file from Supabase:', error);
-    return false;
+    console.error('File deletion error:', error);
+    throw new Error(`Error deleting file: ${error.message}`);
   }
 };

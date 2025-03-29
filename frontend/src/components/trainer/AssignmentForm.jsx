@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import useAuth from '../../hooks/useAuth';
+import AuthContext from '../../context/AuthContext';
 import { format } from 'date-fns';
 
 const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
-  const { user } = useAuth();
+  const { user } = useContext(AuthContext);
   const [selectedFile, setSelectedFile] = useState(null);
   
   const {
