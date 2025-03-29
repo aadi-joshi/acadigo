@@ -6,6 +6,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -31,8 +32,11 @@ export const AuthProvider = ({ children }) => {
 
   // Login user
   const login = async (email, password) => {
+    setError(null);
     try {
+      console.log('Attempting login with API URL:', api.defaults.baseURL);
       const response = await api.post('/auth/login', { email, password });
+      
       const { token, user } = response.data;
       
       // Save to localStorage
@@ -43,6 +47,8 @@ export const AuthProvider = ({ children }) => {
       return user;
     } catch (error) {
       console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to login. Please check your credentials.';
+      setError(errorMessage);
       throw error;
     }
   };
@@ -60,6 +66,9 @@ export const AuthProvider = ({ children }) => {
     setUser(updatedUser);
   };
 
+  // Clear errors
+  const clearError = () => setError(null);
+
   return (
     <AuthContext.Provider
       value={{
@@ -68,6 +77,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUser,
+        error,
+        clearError,
         isAuthenticated: !!user
       }}
     >

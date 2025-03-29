@@ -1,7 +1,18 @@
 import axios from 'axios';
 
+// Helper function to ensure baseURL has the correct format
+const formatBaseUrl = (url) => {
+  // If it's a complete URL (has protocol)
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    // Make sure it ends with /api
+    return url.endsWith('/api') ? url : `${url}/api`.replace(/\/+/g, '/').replace(/\/api\/api/g, '/api');
+  }
+  // Default localhost URL with /api
+  return 'http://localhost:5000/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: formatBaseUrl(import.meta.env.VITE_API_URL),
   headers: {
     'Content-Type': 'application/json'
   }
