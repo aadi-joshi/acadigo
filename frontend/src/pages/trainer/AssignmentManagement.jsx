@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ClipboardDocumentListIcon, 
@@ -10,10 +10,12 @@ import {
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import AssignmentForm from '../../components/trainer/AssignmentForm';
-import axios from 'axios';
+import api from '../../services/api';
 import { toast } from 'react-toastify';
+import AuthContext from '../../context/AuthContext';
 
 export default function AssignmentManagement() {
+  const { user } = useContext(AuthContext); // Add user context
   const [loading, setLoading] = useState(true);
   const [assignmentList, setAssignmentList] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -27,13 +29,15 @@ export default function AssignmentManagement() {
       try {
         setLoading(true);
         
-        // Fetch assignments
-        const assignmentsRes = await axios.get('/api/assignments');
-        setAssignmentList(assignmentsRes.data);
-        
-        // Fetch batches - for admin, get all batches; for trainer, get only their batches
-        const batchesRes = await axios.get('/api/batches');
+        // Fetch batches first - trainers should only see their batches
+        const batchesRes = await api.get('/batches');
+        console.log('Batches fetched:', batchesRes.data);
         setBatches(batchesRes.data);
+        
+        // Fetch assignments - by default will filter based on trainer's permissions
+        const assignmentsRes = await api.get('/assignments');
+        console.log('Assignments fetched:', assignmentsRes.data);
+        setAssignmentList(assignmentsRes.data);
         
         setLoading(false);
       } catch (err) {
@@ -64,7 +68,7 @@ export default function AssignmentManagement() {
   const handleDeleteAssignment = async (assignmentId) => {
     if (window.confirm('Are you sure you want to delete this assignment?')) {
       try {
-        await axios.delete(`/api/assignments/${assignmentId}`);
+        await api.delete(`/assignments/${assignmentId}`);
         setAssignmentList(assignmentList.filter(a => a._id !== assignmentId));
         toast.success('Assignment deleted successfully');
       } catch (err) {
@@ -78,7 +82,7 @@ export default function AssignmentManagement() {
     try {
       if (currentAssignment) {
         // Update existing assignment
-        const response = await axios.put(`/api/assignments/${currentAssignment._id}`, formData, {
+        const response = await api.put(`/assignments/${currentAssignment._id}`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -87,7 +91,7 @@ export default function AssignmentManagement() {
         toast.success('Assignment updated successfully');
       } else {
         // Create new assignment
-        const response = await axios.post('/api/assignments', formData, {
+        const response = await api.post('/assignments', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -186,7 +190,7 @@ export default function AssignmentManagement() {
                         {assignment.batch?.name || 'Unknown batch'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className={`flex items-center ${isDeadlinePassed ? 'text-red-400' : 'text-gray-300'}`}>
                         <CalendarIcon className="h-4 w-4 mr-1" />
                         {new Date(assignment.deadline).toLocaleDateString()}
@@ -249,13 +253,14 @@ export default function AssignmentManagement() {
         </div>
       )}
 
-      <AssignmentForm
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        assignment={currentAssignment}
-        batches={batches}
-      />
+      {isFormOpen && (
+        <AssignmentForm
+          onCancel={() => setIsFormOpen(false)}
+          onSubmit={handleFormSubmit}
+          assignment={currentAssignment}
+          batches={batches}
+        />
+      )}
     </div>
   );
 }

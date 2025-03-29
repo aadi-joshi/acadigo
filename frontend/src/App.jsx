@@ -146,15 +146,17 @@ function App() {
           <Route
             path="assignments"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'trainer', 'student']}>
-                <AssignmentView />
-              </ProtectedRoute>
+              user && (user.role === 'admin' || user.role === 'trainer') ? 
+                <Navigate to="/trainer/assignments" /> : 
+                <ProtectedRoute allowedRoles={['student']}>
+                  <AssignmentView />
+                </ProtectedRoute>
             }
           />
           <Route
             path="assignments/:id"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'trainer', 'student']}>
+              <ProtectedRoute allowedRoles={['student']}>
                 <AssignmentView />
               </ProtectedRoute>
             }

@@ -1,21 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { 
-  CheckCircleIcon, 
-  XCircleIcon, 
+  ClipboardDocumentListIcon, 
   ArrowLeftIcon,
-  DocumentTextIcon,
-  ClockIcon,
-  ArrowTopRightOnSquareIcon,
+  DocumentIcon,
+  UserCircleIcon,
   CheckIcon,
-  FunnelIcon
+  ClockIcon,
+  XMarkIcon,
+  PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
-import { getSubmissions, gradeSubmission } from '../../services/assignmentService';
-import { format, parseISO } from 'date-fns';
-import { toast } from 'react-toastify';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getSubmissions, gradeSubmission } from '../../services/assignmentService';
+import api from '../../services/api';
+import { toast } from 'react-toastify';
+import AuthContext from '../../context/AuthContext';
 
 export default function SubmissionsList() {
+  const { user } = useContext(AuthContext);
   const { id } = useParams();
   const navigate = useNavigate();
   const [assignment, setAssignment] = useState(null);
@@ -29,6 +32,7 @@ export default function SubmissionsList() {
   const [feedback, setFeedback] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loadingGrade, setLoadingGrade] = useState(false);
 
   useEffect(() => {
     const fetchAssignmentAndSubmissions = async () => {
@@ -36,11 +40,8 @@ export default function SubmissionsList() {
         setLoading(true);
         
         // Fetch assignment details
-        const assignmentResponse = await fetch(`/api/assignments/${id}`);
-        if (!assignmentResponse.ok) {
-          throw new Error('Failed to fetch assignment details');
-        }
-        const assignmentData = await assignmentResponse.json();
+        const assignmentResponse = await api.get(`/assignments/${id}`);
+        const assignmentData = assignmentResponse.data;
         setAssignment(assignmentData);
         setBatchName(assignmentData.batch?.name || 'Unknown Batch');
         
@@ -51,7 +52,7 @@ export default function SubmissionsList() {
         setLoading(false);
       } catch (err) {
         console.error('Error loading assignment submissions:', err);
-        setError(err.message || 'Failed to load submissions');
+        setError(err.response?.data?.message || 'Failed to load submissions');
         setLoading(false);
       }
     };
@@ -75,9 +76,10 @@ export default function SubmissionsList() {
     }
     
     try {
-      setLoading(true);
+      setLoadingGrade(true);
+      // Make sure we're formatting the data correctly
       const updatedSubmission = await gradeSubmission(selectedSubmission._id, { 
-        score, 
+        score: parseInt(score), // Make sure score is sent as a number
         feedback 
       });
       
@@ -88,19 +90,18 @@ export default function SubmissionsList() {
       
       setIsGradingModalOpen(false);
       toast.success('Submission graded successfully');
-      setLoading(false);
-    } catch (error) {
-      console.error('Error grading submission:', error);
-      toast.error('Failed to grade submission');
-      setLoading(false);
+    } catch (err) {
+      console.error('Error grading submission:', err);
+      toast.error(err.response?.data?.message || 'Error grading submission');
+    } finally {
+      setLoadingGrade(false);
     }
   };
 
   // Filter submissions based on status and search term
   const filteredSubmissions = submissions.filter(submission => {
     const matchesStatus = statusFilter === 'all' || submission.status === statusFilter;
-    const matchesSearch = submission.student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         submission.student?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = submission.student.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -128,14 +129,15 @@ export default function SubmissionsList() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <button
+      <div className="flex items-center mb-6">
+        <button 
           onClick={() => navigate('/trainer/assignments')}
-          className="flex items-center text-gray-300 hover:text-white"
+          className="flex items-center text-primary-400 hover:text-primary-300 mr-4"
         >
           <ArrowLeftIcon className="h-4 w-4 mr-1" />
           Back to Assignments
         </button>
+        <h1 className="text-2xl font-bold text-white">{assignment?.title} - Submissions</h1>
       </div>
       
       {/* Assignment Header */}
@@ -144,15 +146,15 @@ export default function SubmissionsList() {
           <h1 className="text-2xl font-bold text-white mb-2">{assignment.title}</h1>
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex items-center text-gray-400">
-              <DocumentTextIcon className="h-5 w-5 mr-1 text-gray-500" />
+              <DocumentIcon className="h-5 w-5 mr-1 text-gray-500" />
               <span>Batch: {batchName}</span>
             </div>
             <div className="flex items-center text-gray-400">
               <ClockIcon className="h-5 w-5 mr-1 text-gray-500" />
-              <span>Deadline: {format(parseISO(assignment.deadline), 'PPP')}</span>
+              <span>Deadline: {format(new Date(assignment.deadline), 'PPP')}</span>
             </div>
             <div className="flex items-center text-gray-400">
-              <CheckCircleIcon className="h-5 w-5 mr-1 text-gray-500" />
+              <ClipboardDocumentListIcon className="h-5 w-5 mr-1 text-gray-500" />
               <span>Max Score: {assignment.maxMarks}</span>
             </div>
           </div>
@@ -164,7 +166,7 @@ export default function SubmissionsList() {
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex items-center">
-              <FunnelIcon className="h-5 w-5 text-gray-400 mr-2" />
+              <UserCircleIcon className="h-5 w-5 text-gray-400 mr-2" />
               <select
                 className="input-field text-sm bg-gray-700"
                 value={statusFilter}
@@ -255,7 +257,7 @@ export default function SubmissionsList() {
                           className="text-blue-400 hover:text-blue-300"
                           title={file.fileName}
                         >
-                          <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                          <PaperAirplaneIcon className="h-5 w-5" />
                         </a>
                       ))}
                       <button
@@ -274,7 +276,7 @@ export default function SubmissionsList() {
         </div>
       ) : (
         <div className="bg-gray-800 p-8 rounded-lg text-center">
-          <XCircleIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+          <XMarkIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white">No Submissions Found</h3>
           <p className="text-gray-400 mt-2">
             {statusFilter !== 'all' || searchTerm
@@ -286,75 +288,79 @@ export default function SubmissionsList() {
       
       {/* Grading Modal */}
       {isGradingModalOpen && selectedSubmission && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="fixed inset-0 bg-black opacity-50"></div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Grade Submission</h2>
+              <button 
+                onClick={() => setIsGradingModalOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
             
-            <div className="relative bg-gray-800 rounded-lg max-w-md w-full mx-auto p-6 shadow-xl">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">
-                  Grade Submission
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setIsGradingModalOpen(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <XCircleIcon className="h-6 w-6" />
-                </button>
+            <div className="mb-4">
+              <p className="text-gray-300">
+                <span className="font-medium">Student:</span> {selectedSubmission.student.name}
+              </p>
+              <p className="text-gray-300">
+                <span className="font-medium">Submitted:</span> {format(new Date(selectedSubmission.submittedAt), 'MMM dd, yyyy h:mm a')}
+              </p>
+            </div>
+            
+            <form onSubmit={handleGradeSubmit}>
+              <div className="mb-4">
+                <label htmlFor="score" className="block text-sm font-medium text-gray-300 mb-1">
+                  Score (out of {assignment?.maxMarks})
+                </label>
+                <input
+                  type="number"
+                  id="score"
+                  min="0"
+                  max={assignment?.maxMarks}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                  value={score}
+                  onChange={(e) => setScore(e.target.value)}
+                  required
+                />
               </div>
               
               <div className="mb-4">
-                <div className="text-sm text-gray-400">Student</div>
-                <div className="font-medium">{selectedSubmission.student?.name}</div>
+                <label htmlFor="feedback" className="block text-sm font-medium text-gray-300 mb-1">
+                  Feedback (Optional)
+                </label>
+                <textarea
+                  id="feedback"
+                  rows="4"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                ></textarea>
               </div>
               
-              <form onSubmit={handleGradeSubmit}>
-                <div className="mb-4">
-                  <label htmlFor="score" className="label">
-                    Score (out of {assignment?.maxMarks})
-                  </label>
-                  <input
-                    id="score"
-                    type="number"
-                    min="0"
-                    max={assignment?.maxMarks}
-                    className="input w-full"
-                    value={score}
-                    onChange={(e) => setScore(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label htmlFor="feedback" className="label">
-                    Feedback
-                  </label>
-                  <textarea
-                    id="feedback"
-                    className="input w-full h-24"
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                  />
-                </div>
-                
-                <div className="flex justify-end mt-6 space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsGradingModalOpen(false)}
-                    className="btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                  >
-                    Submit Grade
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsGradingModalOpen(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md mr-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md flex items-center"
+                  disabled={loadingGrade}
+                >
+                  {loadingGrade ? <LoadingSpinner size="small" /> : (
+                    <>
+                      <CheckIcon className="h-4 w-4 mr-1" />
+                      Submit Grade
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

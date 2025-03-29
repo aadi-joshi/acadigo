@@ -481,7 +481,7 @@ function StudentDashboard({ data }) {
                 })}
               </div>
             ) : (
-              <div className="px-6 py-4 text-gray-400">No upcoming deadlines.</div>
+              <p className="text-center py-4 text-gray-400">No upcoming assignments.</p>
             )}
           </div>
         </div>

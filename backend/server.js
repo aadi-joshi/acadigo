@@ -68,7 +68,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/ppts', pptRoutes);
 app.use('/api/assignments', assignmentRoutes);
-app.use('/api/submissions', submissionRoutes);
+app.use('/api/submissions', submissionRoutes); // Make sure this line exists
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/debug', debugRoutes); // Add this line to mount debug routes

@@ -27,7 +27,7 @@ exports.getMySubmissions = async (req, res) => {
 };
 
 // @desc    Grade a submission
-// @route   POST /api/submissions/:id/grade
+// @route   PUT /api/submissions/:id/grade
 // @access  Private (admin, trainer)
 exports.gradeSubmission = async (req, res) => {
   try {
@@ -74,7 +74,7 @@ exports.gradeSubmission = async (req, res) => {
     
     await submission.save();
     
-    // Notify student via email (optional)
+    // Notify student via email (non-blocking)
     try {
       await sendEmail(
         submission.student.email,

@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import AuthContext from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -26,26 +26,56 @@ export default function AssignmentView() {
   const [searchTerm, setSearchTerm] = useState('');
   const { id } = useParams();
   const { user, isAuthenticated } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // Redirect admin and trainer to the correct page
+    if (user && (user.role === 'admin' || user.role === 'trainer')) {
+      navigate('/trainer/assignments');
+      return;
+    }
+
     const fetchAssignments = async () => {
       try {
         setLoading(true);
-        const { data } = await api.get('/api/assignments');
+        console.log('Fetching assignments...');
+        
+        // Use the proper API endpoint based on role
+        let endpoint = '/assignments';
+        if (user.role === 'trainer' || user.role === 'admin') {
+          // For trainers and admins, we can use the same endpoint but may add query params if needed
+          endpoint = '/assignments';
+        }
+        
+        const { data } = await api.get(endpoint);
+        console.log('Assignments fetched:', data);
         setAssignments(data);
         
-        // Get submissions for each assignment
-        const submissionsData = {};
-        await Promise.all(data.map(async (assignment) => {
-          try {
-            const res = await api.get(`/api/assignments/${assignment._id}/submissions`);
-            submissionsData[assignment._id] = res.data;
-          } catch (err) {
-            console.error(`Error fetching submissions for assignment ${assignment._id}:`, err);
-          }
-        }));
-        
-        setSubmissions(submissionsData);
+        // Only fetch submissions for students
+        if (user.role === 'student') {
+          // Get submissions for each assignment
+          const submissionsData = {};
+          await Promise.all(data.map(async (assignment) => {
+            try {
+              // For students, we need to check if they've submitted something
+              const res = await api.get('/submissions/my-submissions');
+              const mySubmissions = res.data;
+              
+              // Find submissions for this particular assignment
+              const assignmentSubmission = mySubmissions.find(
+                sub => sub.assignment._id === assignment._id
+              );
+              
+              if (assignmentSubmission) {
+                submissionsData[assignment._id] = assignmentSubmission;
+              }
+            } catch (err) {
+              console.error(`Error fetching submissions for assignment ${assignment._id}:`, err);
+            }
+          }));
+          
+          setSubmissions(submissionsData);
+        }
         
         // If ID is provided in URL, select that specific assignment
         if (id) {
@@ -53,12 +83,15 @@ export default function AssignmentView() {
           if (assignment) {
             setSelectedAssignment(assignment);
             // Log the view
-            await api.post(`/api/logs/assignment/${id}/view`);
+            await api.post(`/logs/assignment/${id}/view`);
           }
+        } else if (data.length > 0) {
+          // Select the first assignment if no specific one is requested
+          setSelectedAssignment(data[0]);
         }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch assignments');
         console.error('Error fetching assignments:', err);
+        setError(err.response?.data?.message || 'Failed to fetch assignments');
       } finally {
         setLoading(false);
       }
@@ -70,13 +103,13 @@ export default function AssignmentView() {
       setError('You must be logged in to view assignments');
       setLoading(false);
     }
-  }, [id, isAuthenticated]);
+  }, [id, isAuthenticated, user, navigate]);
 
   const handleAssignmentClick = async (assignment) => {
     try {
       setSelectedAssignment(assignment);
       // Log the view
-      await api.post(`/api/logs/assignment/${assignment._id}/view`);
+      await api.post(`/logs/assignment/${assignment._id}/view`);
     } catch (err) {
       console.error('Error logging assignment view:', err);
     }
@@ -87,7 +120,7 @@ export default function AssignmentView() {
     try {
       window.open(assignment.fileUrl, '_blank');
       // Log the download
-      await api.post(`/api/logs/assignment/${assignment._id}/download`);
+      await api.post(`/logs/assignment/${assignment._id}/download`);
     } catch (err) {
       console.error('Error downloading assignment:', err);
     }
@@ -111,7 +144,7 @@ export default function AssignmentView() {
       
       // Submit assignment
       const { data } = await api.post(
-        `/api/assignments/${selectedAssignment._id}/submit`, 
+        `/assignments/${selectedAssignment._id}/submit`, 
         formData,
         {
           headers: {
@@ -281,7 +314,7 @@ export default function AssignmentView() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
-                      onClick={() => api.post(`/api/logs/assignment/${selectedAssignment._id}/download`)}
+                      onClick={() => api.post(`/logs/assignment/${selectedAssignment._id}/download`)}
                     >
                       <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                       Download Instructions
@@ -341,7 +374,7 @@ export default function AssignmentView() {
                         {submissions[selectedAssignment._id].feedback && (
                           <div>
                             <span className="text-gray-300">Feedback:</span>
-                            <p className="mt-1 text-white">{submissions[selectedAssignment._id].feedback}</p>
+                            <p className="mt-1 text-white whitespace-pre-wrap">{submissions[selectedAssignment._id].feedback}</p>
                           </div>
                         )}
                       </div>

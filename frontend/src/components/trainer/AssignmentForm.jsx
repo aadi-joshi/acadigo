@@ -45,16 +45,16 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
   };
   
   const onFormSubmit = (data) => {
+    // Make sure to include batch in the form data for proper permission validation
     const formData = new FormData();
     formData.append('title', data.title);
-    formData.append('description', data.description);
+    formData.append('description', data.description || '');
     formData.append('batch', data.batch);
     formData.append('deadline', new Date(data.deadline).toISOString());
     formData.append('allowResubmission', data.allowResubmission);
     formData.append('maxMarks', data.maxMarks);
-    formData.append('uploadedBy', user._id);
     
-    // Only append file if a new one was selected or if creating a new assignment
+    // Only append file if one was selected
     if (selectedFile) {
       formData.append('file', selectedFile);
     }
