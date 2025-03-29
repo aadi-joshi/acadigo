@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import api from '../../services/api'; // Import api service instead of axios
 
-const UserForm = ({ user, batches, onSubmit, onCancel }) => {
+const UserForm = ({ isOpen, onClose, onSubmit, user, batches = [] }) => {
   const {
     register,
     handleSubmit,
@@ -12,43 +13,101 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
     watch,
   } = useForm({
     defaultValues: {
-      name: user?.name || '',
-      email: user?.email || '',
+      name: '',
+      email: '',
       password: '',
-      role: user?.role || 'student',
-      batch: user?.batch || '',
+      role: 'student',
+      batch: '',
     },
   });
-  
-  const selectedRole = watch('role');
-  
+
+  const [selectedRole, setSelectedRole] = useState('student');
+  const [batchOptions, setBatchOptions] = useState(batches);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
+    // If we are editing a user, fetch their current data
     if (user) {
       reset({
         name: user.name,
         email: user.email,
-        password: '',
+        password: '', // Don't pre-fill password for security
         role: user.role,
-        batch: user.batch || '',
+        batch: user.batch?._id || user.batch || '',
+      });
+    } else {
+      // If creating a new user, reset form
+      reset({
+        name: '',
+        email: '',
+        password: '',
+        role: 'student',
+        batch: '',
       });
     }
-  }, [user, reset]);
-  
-  const onFormSubmit = (data) => {
-    // If it's an edit and password is empty, don't update the password
-    if (user && !data.password) {
-      const { password, ...restData } = data;
-      onSubmit(restData);
+
+    // Update selectedRole when user.role changes
+    if (user?.role) {
+      setSelectedRole(user.role);
     } else {
+      setSelectedRole('student');
+    }
+  }, [user, reset]);
+
+  // Handle role change
+  const handleRoleChange = (e) => {
+    setSelectedRole(e.target.value);
+  };
+
+  // Fetch batches if they're not provided
+  useEffect(() => {
+    if (batches.length === 0) {
+      const fetchBatches = async () => {
+        try {
+          // Use api service instead of axios
+          const { data } = await api.get('/batches');
+          setBatchOptions(data);
+        } catch (err) {
+          console.error('Error fetching batches:', err);
+        }
+      };
+
+      fetchBatches();
+    } else {
+      setBatchOptions(batches);
+    }
+  }, [batches]);
+
+  const onFormSubmit = (data) => {
+    try {
+      // For debugging - log the form data
+      console.log('Form submission data:', data);
+      
+      // Ensure password is provided for new users
+      if (!user && !data.password) {
+        setError('Password is required for new users');
+        return;
+      }
+      
+      // Ensure that student has a batch
+      if (data.role === 'student' && !data.batch) {
+        setError('Students must be assigned to a batch');
+        return;
+      }
+
+      // Call the onSubmit function with the form data
       onSubmit(data);
+    } catch (err) {
+      console.error('Form submission error:', err);
+      setError(err.message || 'An error occurred while submitting the form');
     }
   };
-  
+
   return (
-    <Dialog open={true} onClose={onCancel} className="fixed inset-0 z-10 overflow-y-auto">
+    <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-10 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen">
         <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-        
+
         <div className="relative bg-gray-800 rounded-lg max-w-md w-full mx-auto p-6 shadow-xl">
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-xl font-bold">
@@ -56,14 +115,17 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
             </Dialog.Title>
             <button
               type="button"
-              onClick={onCancel}
+              onClick={onClose}
               className="text-gray-400 hover:text-white"
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           <form onSubmit={handleSubmit(onFormSubmit)}>
+            {error && (
+              <p className="mb-4 text-sm text-red-500">{error}</p>
+            )}
             <div className="mb-4">
               <label htmlFor="name" className="label">
                 Name
@@ -78,7 +140,7 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                 <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
               )}
             </div>
-            
+
             <div className="mb-4">
               <label htmlFor="email" className="label">
                 Email
@@ -100,7 +162,7 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                 <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
               )}
             </div>
-            
+
             <div className="mb-4">
               <label htmlFor="password" className="label">
                 Password {user && <span className="text-gray-400 text-xs">(Leave blank to keep unchanged)</span>}
@@ -121,7 +183,7 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                 <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
               )}
             </div>
-            
+
             <div className="mb-4">
               <label htmlFor="role" className="label">
                 Role
@@ -130,6 +192,7 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                 id="role"
                 className="select w-full"
                 {...register('role', { required: 'Role is required' })}
+                onChange={handleRoleChange}
               >
                 <option value="student">Student</option>
                 <option value="trainer">Trainer</option>
@@ -139,7 +202,7 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                 <p className="mt-1 text-sm text-red-500">{errors.role.message}</p>
               )}
             </div>
-            
+
             {selectedRole === 'student' && (
               <div className="mb-4">
                 <label htmlFor="batch" className="label">
@@ -153,7 +216,7 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                   })}
                 >
                   <option value="">Select a batch</option>
-                  {batches.map((batch) => (
+                  {batchOptions.map((batch) => (
                     <option key={batch._id} value={batch._id}>
                       {batch.name}
                     </option>
@@ -164,11 +227,11 @@ const UserForm = ({ user, batches, onSubmit, onCancel }) => {
                 )}
               </div>
             )}
-            
+
             <div className="flex justify-end mt-6 space-x-3">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={onClose}
                 className="btn-secondary"
               >
                 Cancel

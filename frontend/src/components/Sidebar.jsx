@@ -7,6 +7,9 @@ import {
   AcademicCapIcon,
   ClipboardDocumentListIcon,
   UserIcon,
+  UsersIcon,
+  CogIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import useAuth from '../hooks/useAuth';
 import { Dialog, Transition } from '@headlessui/react';
@@ -20,12 +23,21 @@ const Sidebar = ({ open, setOpen }) => {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: ['admin', 'trainer', 'student'] },
   ];
 
-  // Admin specific routes
+  // Common routes for all users
+  navigation.push(
+    { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'trainer', 'student'] }
+  );
+
+  // Admin-specific routes
   if (user?.role === 'admin') {
-    navigation.push({ name: 'User Management', href: '/admin/users', icon: UserIcon, roles: ['admin'] });
+    navigation.push(
+      { name: 'User Management', href: '/admin/users', icon: UsersIcon, roles: ['admin'] },
+      { name: 'System Settings', href: '/admin/settings', icon: CogIcon, roles: ['admin'] },
+      { name: 'System Analytics', href: '/admin/analytics', icon: ChartBarIcon, roles: ['admin'] }
+    );
   }
 
-  // Trainer specific routes
+  // Admin and trainer routes
   if (user?.role === 'admin' || user?.role === 'trainer') {
     navigation.push(
       { name: 'Batch Management', href: '/trainer/batches', icon: UserGroupIcon, roles: ['admin', 'trainer'] },

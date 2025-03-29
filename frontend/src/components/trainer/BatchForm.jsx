@@ -1,11 +1,13 @@
-import { useEffect, useContext } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import AuthContext from '../../context/AuthContext';
+import { format } from 'date-fns';
 
-const BatchForm = ({ batch, onSubmit, onCancel }) => {
+const BatchForm = ({ isOpen, onClose, batch, trainers = [], onSubmit }) => {
   const { user } = useContext(AuthContext);
+  const isAdmin = user.role === 'admin';
   
   const {
     register,
@@ -16,13 +18,14 @@ const BatchForm = ({ batch, onSubmit, onCancel }) => {
     defaultValues: {
       name: batch?.name || '',
       description: batch?.description || '',
+      trainer: batch?.trainer?._id || batch?.trainer || (isAdmin ? '' : user._id),
       startDate: batch?.startDate 
-        ? new Date(batch.startDate).toISOString().split('T')[0] 
-        : new Date().toISOString().split('T')[0],
+        ? format(new Date(batch.startDate), 'yyyy-MM-dd') 
+        : format(new Date(), 'yyyy-MM-dd'),
       endDate: batch?.endDate 
-        ? new Date(batch.endDate).toISOString().split('T')[0] 
+        ? format(new Date(batch.endDate), 'yyyy-MM-dd') 
         : '',
-      isActive: batch?.isActive ?? true,
+      active: batch?.active ?? true,
     },
   });
   
@@ -31,26 +34,26 @@ const BatchForm = ({ batch, onSubmit, onCancel }) => {
       reset({
         name: batch.name,
         description: batch.description,
-        startDate: new Date(batch.startDate).toISOString().split('T')[0],
-        endDate: batch.endDate ? new Date(batch.endDate).toISOString().split('T')[0] : '',
-        isActive: batch.isActive,
+        trainer: batch.trainer?._id || batch.trainer || (isAdmin ? '' : user._id),
+        startDate: format(new Date(batch.startDate), 'yyyy-MM-dd'),
+        endDate: batch.endDate ? format(new Date(batch.endDate), 'yyyy-MM-dd') : '',
+        active: batch.active ?? true,
       });
     }
-  }, [batch, reset]);
+  }, [batch, reset, user._id, isAdmin]);
   
   const onFormSubmit = (data) => {
     const formattedData = {
       ...data,
-      trainer: user._id, // Set current user as trainer
-      startDate: new Date(data.startDate),
-      endDate: data.endDate ? new Date(data.endDate) : null,
+      startDate: new Date(data.startDate).toISOString(),
+      endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
     };
     
     onSubmit(formattedData);
   };
   
   return (
-    <Dialog open={true} onClose={onCancel} className="fixed inset-0 z-10 overflow-y-auto">
+    <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-10 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen">
         <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
         
@@ -61,10 +64,11 @@ const BatchForm = ({ batch, onSubmit, onCancel }) => {
             </Dialog.Title>
             <button
               type="button"
-              onClick={onCancel}
+              onClick={onClose}
               className="text-gray-400 hover:text-white"
             >
-              <XMarkIcon className="h-6 w-6" />
+              <span className="sr-only">Close</span>
+              ✕
             </button>
           </div>
           
@@ -94,6 +98,29 @@ const BatchForm = ({ batch, onSubmit, onCancel }) => {
                 {...register('description')}
               />
             </div>
+            
+            {isAdmin && (
+              <div className="mb-4">
+                <label htmlFor="trainer" className="label">
+                  Trainer
+                </label>
+                <select
+                  id="trainer"
+                  className="select w-full"
+                  {...register('trainer', { required: 'Trainer is required' })}
+                >
+                  <option value="">Select a trainer</option>
+                  {trainers.map((trainer) => (
+                    <option key={trainer._id} value={trainer._id}>
+                      {trainer.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.trainer && (
+                  <p className="mt-1 text-sm text-red-500">{errors.trainer.message}</p>
+                )}
+              </div>
+            )}
             
             <div className="mb-4">
               <label htmlFor="startDate" className="label">
@@ -126,8 +153,8 @@ const BatchForm = ({ batch, onSubmit, onCancel }) => {
               <label className="inline-flex items-center">
                 <input
                   type="checkbox"
-                  className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-700 bg-gray-700 focus:ring-primary-500"
-                  {...register('isActive')}
+                  className="form-checkbox h-5 w-5 text-primary-600"
+                  {...register('active')}
                 />
                 <span className="ml-2">Active</span>
               </label>
@@ -136,7 +163,7 @@ const BatchForm = ({ batch, onSubmit, onCancel }) => {
             <div className="flex justify-end mt-6 space-x-3">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={onClose}
                 className="btn-secondary"
               >
                 Cancel

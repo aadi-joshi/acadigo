@@ -1,14 +1,13 @@
+// Load environment variables first
+require('dotenv').config();
+
 const express = require('express');
-const dotenv = require('dotenv');
-const morgan = require('morgan');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
-const mongoose = require('mongoose');
-
-// Load env vars
-dotenv.config();
 
 // Connect to database
 connectDB();

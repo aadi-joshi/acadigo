@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
+import AuthContext from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import SubmissionModal from '../../components/student/SubmissionModal';
 import { 
@@ -11,7 +12,7 @@ import {
   ClockIcon, 
   PaperAirplaneIcon,
   ArrowTopRightOnSquareIcon,
-  DocumentIcon // Added the missing import
+  DocumentIcon
 } from '@heroicons/react/24/outline';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
 
@@ -24,19 +25,20 @@ export default function AssignmentView() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { id } = useParams();
+  const { user, isAuthenticated } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchAssignments = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get('/api/assignments');
+        const { data } = await api.get('/api/assignments');
         setAssignments(data);
         
         // Get submissions for each assignment
         const submissionsData = {};
         await Promise.all(data.map(async (assignment) => {
           try {
-            const res = await axios.get(`/api/assignments/${assignment._id}/submissions`);
+            const res = await api.get(`/api/assignments/${assignment._id}/submissions`);
             submissionsData[assignment._id] = res.data;
           } catch (err) {
             console.error(`Error fetching submissions for assignment ${assignment._id}:`, err);
@@ -51,7 +53,7 @@ export default function AssignmentView() {
           if (assignment) {
             setSelectedAssignment(assignment);
             // Log the view
-            await axios.post(`/api/logs/assignment/${id}/view`);
+            await api.post(`/api/logs/assignment/${id}/view`);
           }
         }
       } catch (err) {
@@ -62,14 +64,19 @@ export default function AssignmentView() {
       }
     };
 
-    fetchAssignments();
-  }, [id]);
+    if (isAuthenticated) {
+      fetchAssignments();
+    } else {
+      setError('You must be logged in to view assignments');
+      setLoading(false);
+    }
+  }, [id, isAuthenticated]);
 
   const handleAssignmentClick = async (assignment) => {
     try {
       setSelectedAssignment(assignment);
       // Log the view
-      await axios.post(`/api/logs/assignment/${assignment._id}/view`);
+      await api.post(`/api/logs/assignment/${assignment._id}/view`);
     } catch (err) {
       console.error('Error logging assignment view:', err);
     }
@@ -80,7 +87,7 @@ export default function AssignmentView() {
     try {
       window.open(assignment.fileUrl, '_blank');
       // Log the download
-      await axios.post(`/api/logs/assignment/${assignment._id}/download`);
+      await api.post(`/api/logs/assignment/${assignment._id}/download`);
     } catch (err) {
       console.error('Error downloading assignment:', err);
     }
@@ -103,7 +110,7 @@ export default function AssignmentView() {
       });
       
       // Submit assignment
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `/api/assignments/${selectedAssignment._id}/submit`, 
         formData,
         {
@@ -274,7 +281,7 @@ export default function AssignmentView() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
-                      onClick={() => axios.post(`/api/logs/assignment/${selectedAssignment._id}/download`)}
+                      onClick={() => api.post(`/api/logs/assignment/${selectedAssignment._id}/download`)}
                     >
                       <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                       Download Instructions

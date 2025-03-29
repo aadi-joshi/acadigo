@@ -71,6 +71,11 @@ exports.getUser = async (req, res) => {
 // @access  Private (admin)
 exports.createUser = async (req, res) => {
   try {
+    // Check if user is authorized to create
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to create users' });
+    }
+
     const { name, email, password, role, batch } = req.body;
 
     // Check required fields

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import AuthContext from '../context/AuthContext';
+import NavLinks from '../components/common/NavLinks';
 import { 
   DocumentTextIcon, 
   ClipboardDocumentListIcon,
@@ -78,8 +79,8 @@ function AdminDashboard({ data }) {
     <div>
       <h1 className="text-2xl font-bold text-white mb-6">Admin Dashboard</h1>
       
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-gray-800 rounded-xl p-6 shadow">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-900 bg-opacity-20">
@@ -127,6 +128,12 @@ function AdminDashboard({ data }) {
             </div>
           </div>
         </div>
+      </div>
+      
+      {/* Quick Actions Section */}
+      <div className="bg-gray-800 rounded-xl p-6 shadow mb-8">
+        <h2 className="text-lg font-medium text-white mb-4">Quick Actions</h2>
+        <NavLinks />
       </div>
       
       {/* Recent Users */}
@@ -308,6 +315,12 @@ function TrainerDashboard({ data }) {
             <div className="px-6 py-4 text-gray-400">No batches assigned yet.</div>
           )}
         </div>
+      </div>
+      
+      {/* Quick Actions Section */}
+      <div className="bg-gray-800 rounded-xl p-6 shadow mb-8">
+        <h2 className="text-lg font-medium text-white mb-4">Quick Actions</h2>
+        <NavLinks />
       </div>
       
       {/* Pending Submissions */}

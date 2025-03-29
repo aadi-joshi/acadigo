@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { UserCircleIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import api from '../../services/api'; // Import the API service instead of axios
 import UserForm from '../../components/admin/UserForm';
 import { toast } from 'react-toastify';
 
@@ -19,12 +19,12 @@ export default function UserManagement() {
       try {
         setLoading(true);
         
-        // Fetch users
-        const usersResponse = await axios.get('/api/users');
+        // Use api service instead of axios
+        const usersResponse = await api.get('/users');
         setUsers(usersResponse.data);
         
-        // Fetch batches for dropdown in form
-        const batchesResponse = await axios.get('/api/batches');
+        // Use api service instead of axios
+        const batchesResponse = await api.get('/batches');
         setBatches(batchesResponse.data);
         
         setLoading(false);
@@ -57,7 +57,8 @@ export default function UserManagement() {
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await axios.delete(`/api/users/${userId}`);
+        // Use api service instead of axios
+        await api.delete(`/users/${userId}`);
         setUsers(users.filter(user => user._id !== userId));
         toast.success('User deleted successfully');
       } catch (err) {
@@ -69,22 +70,27 @@ export default function UserManagement() {
 
   const handleFormSubmit = async (userData) => {
     try {
+      console.log('Submitting user data:', userData);
+      
       if (currentUser) {
-        // Update existing user
-        const response = await axios.put(`/api/users/${currentUser._id}`, userData);
+        // Update existing user - use api service
+        const response = await api.put(`/users/${currentUser._id}`, userData);
         setUsers(users.map(user => user._id === currentUser._id ? response.data : user));
         toast.success('User updated successfully');
       } else {
-        // Create new user
-        const response = await axios.post('/api/users', userData);
-        setUsers([...users, response.data]);
+        // Create new user - use api service
+        const response = await api.post('/users', userData);
+        console.log('Create user response:', response.data);
+        setUsers([response.data, ...users]);
         toast.success('User created successfully');
       }
       
       setIsFormOpen(false);
     } catch (err) {
       console.error('Error saving user:', err);
-      toast.error(err.response?.data?.message || 'Error saving user');
+      const errorMessage = err.response?.data?.message || 'Error saving user';
+      toast.error(errorMessage);
+      setError(errorMessage);
     }
   };
 

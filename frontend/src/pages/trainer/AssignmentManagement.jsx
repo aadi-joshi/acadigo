@@ -31,7 +31,7 @@ export default function AssignmentManagement() {
         const assignmentsRes = await axios.get('/api/assignments');
         setAssignmentList(assignmentsRes.data);
         
-        // Fetch batches
+        // Fetch batches - for admin, get all batches; for trainer, get only their batches
         const batchesRes = await axios.get('/api/batches');
         setBatches(batchesRes.data);
         

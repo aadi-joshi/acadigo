@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const User = require('../models/User');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -13,43 +13,29 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-const User = require('../models/User');
-
 const resetAdminPassword = async () => {
   try {
-    const email = 'admin@example.com';
-    const newPassword = 'password123';
+    // Find admin user
+    const admin = await User.findOne({ email: 'admin@example.com' });
     
-    console.log(`Resetting password for ${email}`);
-    
-    // Find user
-    const user = await User.findOne({ email });
-    
-    if (!user) {
-      console.log('User not found!');
-      process.exit(1);
+    if (!admin) {
+      console.log('Admin user not found! Please run the createAdmin.js script first.');
+      mongoose.connection.close();
+      return;
     }
     
-    // Generate salt and hash
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    // Update admin's password directly through save method to ensure hash is correct
+    admin.password = 'password123';
+    await admin.save();
     
-    // Update user password directly in the database, bypassing any middleware
-    await User.updateOne(
-      { _id: user._id },
-      { $set: { password: hashedPassword } }
-    );
-    
-    console.log('Password reset successfully!');
-    
-    // Verify the reset worked
-    const updatedUser = await User.findOne({ email }).select('+password');
-    const isMatch = await bcrypt.compare(newPassword, updatedUser.password);
-    console.log('Password verification:', isMatch);
+    console.log('Admin password reset successfully!');
+    console.log(`Email: ${admin.email}`);
+    console.log('Password: password123');
     
     mongoose.connection.close();
   } catch (error) {
-    console.error('Error resetting password:', error);
+    console.error('Error resetting admin password:', error);
+    mongoose.connection.close();
   }
 };
 

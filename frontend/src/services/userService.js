@@ -1,7 +1,11 @@
 import api from './api';
 
-export const getUsers = async (role) => {
-  const response = await api.get('/users', { params: { role } });
+export const getUsers = async (role, unassigned) => {
+  const params = {};
+  if (role) params.role = role;
+  if (unassigned !== undefined) params.unassigned = unassigned;
+  
+  const response = await api.get('/users', { params });
   return response.data;
 };
 

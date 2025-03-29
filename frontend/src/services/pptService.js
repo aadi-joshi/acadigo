@@ -20,7 +20,11 @@ export const uploadPPT = async (formData) => {
 };
 
 export const updatePPT = async (id, pptData) => {
-  const response = await api.put(`/ppts/${id}`, pptData);
+  const response = await api.put(`/ppts/${id}`, pptData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 
@@ -30,6 +34,11 @@ export const deletePPT = async (id) => {
 };
 
 export const logPPTView = async (pptId) => {
-  const response = await api.post(`/ppts/${pptId}/view`);
+  const response = await api.post(`/logs/ppt/${pptId}/view`);
+  return response.data;
+};
+
+export const logPPTDownload = async (pptId) => {
+  const response = await api.post(`/logs/ppt/${pptId}/download`);
   return response.data;
 };

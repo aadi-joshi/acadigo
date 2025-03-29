@@ -5,54 +5,60 @@ const User = require('../models/User');
 exports.protect = async (req, res, next) => {
   try {
     let token;
-    
-    // Check for token in Authorization header
+
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
-    
-    // Check if token exists
+
     if (!token) {
-      console.log('No token provided for protected route');
       return res.status(401).json({ message: 'Not authorized to access this route' });
     }
-    
+
     try {
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Get user from database
       const user = await User.findById(decoded.id);
-      
+
       if (!user) {
-        console.log('User not found for token ID:', decoded.id);
         return res.status(401).json({ message: 'User not found' });
       }
-      
-      // Add user to request object
+
+      if (!user.active) {
+        return res.status(401).json({ message: 'User account is inactive' });
+      }
+
       req.user = user;
       next();
     } catch (error) {
-      console.error('Token verification error:', error);
       return res.status(401).json({ message: 'Not authorized to access this route' });
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
     return res.status(500).json({ message: 'Server error in authentication' });
   }
 };
 
-// Authorize by role
+// Authorize by role - FIXED: properly handle admin access and debug logging
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'User not authenticated' });
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    console.log(`Authorization check: User role ${req.user.role}, Required roles: ${roles.join(', ')}`);
+    
+    // Always allow admin regardless of specified roles
+    if (req.user.role === 'admin') {
+      console.log('Admin access granted');
+      return next();
     }
     
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: `User role ${req.user.role} is not authorized to access this route` });
+      console.log(`Access denied: User role ${req.user.role} not in allowed roles: ${roles.join(', ')}`);
+      return res.status(403).json({
+        message: `Role ${req.user.role} is not authorized to access this resource`,
+      });
     }
     
+    console.log('Authorization successful');
     next();
   };
 };

@@ -27,7 +27,7 @@ const PPTForm = ({ ppt, batches, onSubmit, onCancel }) => {
       reset({
         title: ppt.title,
         description: ppt.description,
-        batch: ppt.batch,
+        batch: ppt.batch._id || ppt.batch,
       });
     }
   }, [ppt, reset]);

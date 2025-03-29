@@ -3,16 +3,11 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ActivityLog = require('../models/ActivityLog');
 
-// Function to generate JWT token
-const generateToken = (user) => {
-  return jwt.sign(
-    { 
-      id: user._id,
-      role: user.role  // Make sure role is included in the token
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRY || '7d' }
-  );
+// Generate JWT token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '30d'
+  });
 };
 
 // @desc    Login user
@@ -21,53 +16,55 @@ const generateToken = (user) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    console.log('Login attempt for:', email);
-    
+
     // Validate email & password
     if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+      return res.status(400).json({ message: 'Please provide an email and password' });
     }
-    
+
     // Check for user
     const user = await User.findOne({ email }).select('+password');
-    
-    if (!user) {
-      console.log('User not found with email:', email);
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    
-    console.log(`User found: ${user.name}, role: ${user.role}`);
 
-    // Check if password matches
-    const isMatch = await bcrypt.compare(password, user.password);
-    
-    if (!isMatch) {
-      console.log('Password does not match for user:', email);
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
-    console.log('Password verified successfully');
+
+    // Check if user is active
+    if (!user.active) {
+      return res.status(401).json({ message: 'Your account has been deactivated' });
+    }
+
+    // Check if password matches - FIXED: using comparePassword instead of matchPassword
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
     // Create token
-    const token = generateToken(user);
+    const token = generateToken(user._id);
 
-    // Update last login time
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
+    // Don't send the password
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      batch: user.batch,
+      active: user.active
+    };
 
-    // Don't send the password back
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    console.log('Login successful, sending response');
     res.status(200).json({
-      user: userResponse,
-      token
+      success: true,
+      token,
+      user: userResponse
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    res.status(500).json({
+      message: 'Server error during login',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -76,16 +73,22 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-
+    const user = await User.findById(req.user.id).select('-password');
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.status(200).json(user);
+    res.status(200).json({
+      success: true,
+      user
+    });
   } catch (error) {
     console.error('Get me error:', error);
-    res.status(500).json({ message: 'Server error while fetching user data' });
+    res.status(500).json({
+      message: 'Server error retrieving user data',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -132,16 +135,21 @@ exports.register = async (req, res) => {
 };
 
 // @desc    Logout user (clear cookie)
-// @route   POST /api/auth/logout
+// @route   GET /api/auth/logout
 // @access  Private
-exports.logout = async (req, res) => {
-  try {
-    res.status(200).json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({
-      message: 'Server error during logout',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+exports.logout = (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+};
+
+// @desc    Test auth endpoint
+// @route   GET /api/auth/test
+// @access  Public
+exports.test = (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Auth endpoint working'
+  });
 };

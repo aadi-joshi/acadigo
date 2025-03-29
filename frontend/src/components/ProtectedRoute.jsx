@@ -1,21 +1,27 @@
+import { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
+import AuthContext from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  // Get user from localStorage
-  const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : null;
+  const { user, isAuthenticated, loading } = useContext(AuthContext);
   
-  // Check if user is authenticated
-  if (!user) {
+  // Show loading spinner while authentication state is being determined
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  // If not authenticated, redirect to login
+  if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
-  
-  // Check if role restrictions exist and user has allowed role
+
+  // If roles are specified and user's role is not included, redirect to dashboard
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    console.log(`User role ${user.role} not in allowed roles: ${allowedRoles.join(', ')}`);
     return <Navigate to="/dashboard" />;
   }
-  
-  // Return children if authenticated and authorized
+
+  // Otherwise, show the protected component
   return children;
 };
 

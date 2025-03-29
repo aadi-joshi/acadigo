@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
+import AuthContext from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { DocumentTextIcon, ArrowTopRightOnSquareIcon, ArrowDownTrayIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 export default function PPTView() {
+  const { user, isAuthenticated } = useContext(AuthContext);
   const [ppts, setPPTs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,32 +18,45 @@ export default function PPTView() {
     const fetchPPTs = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get('/api/ppts');
+        
+        // Use our api service which automatically includes auth token
+        const { data } = await api.get('/ppts');
         setPPTs(data);
         
         // If ID is provided in URL, fetch that specific PPT
         if (id) {
-          const { data: pptData } = await axios.get(`/api/ppts/${id}`);
+          const { data: pptData } = await api.get(`/ppts/${id}`);
           setSelectedPPT(pptData);
           // Log the view
-          await axios.post(`/api/logs/ppt/${id}/view`);
+          await api.post(`/logs/ppt/${id}/view`);
         }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch PPTs');
         console.error('Error fetching PPTs:', err);
+        if (err.response?.status === 401) {
+          setError('Authentication error: Please login again');
+        } else if (err.response?.status === 403) {
+          setError('You do not have permission to access these PPTs');
+        } else {
+          setError(err.response?.data?.message || 'Failed to fetch PPTs');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPPTs();
-  }, [id]);
+    if (isAuthenticated) {
+      fetchPPTs();
+    } else {
+      setError('You must be logged in to view PPTs');
+      setLoading(false);
+    }
+  }, [id, isAuthenticated]);
 
   const handlePPTClick = async (ppt) => {
     try {
       setSelectedPPT(ppt);
       // Log the view
-      await axios.post(`/api/logs/ppt/${ppt._id}/view`);
+      await api.post(`/logs/ppt/${ppt._id}/view`);
     } catch (err) {
       console.error('Error logging PPT view:', err);
     }
@@ -52,7 +67,7 @@ export default function PPTView() {
     try {
       window.open(ppt.fileUrl, '_blank');
       // Log the download
-      await axios.post(`/api/logs/ppt/${ppt._id}/download`);
+      await api.post(`/logs/ppt/${ppt._id}/download`);
     } catch (err) {
       console.error('Error downloading PPT:', err);
     }
@@ -172,7 +187,7 @@ export default function PPTView() {
                     href={selectedPPT.fileUrl}
                     download
                     className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                    onClick={() => axios.post(`/api/logs/ppt/${selectedPPT._id}/download`)}
+                    onClick={() => api.post(`/logs/ppt/${selectedPPT._id}/download`)}
                   >
                     <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                     Download

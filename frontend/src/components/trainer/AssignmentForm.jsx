@@ -2,8 +2,8 @@ import { useEffect, useState, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import AuthContext from '../../context/AuthContext';
 import { format } from 'date-fns';
+import AuthContext from '../../context/AuthContext';
 
 const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
   const { user } = useContext(AuthContext);
@@ -19,11 +19,9 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
       title: assignment?.title || '',
       description: assignment?.description || '',
       batch: assignment?.batch || '',
-      deadline: assignment?.deadline 
-        ? format(new Date(assignment.deadline), 'yyyy-MM-dd\'T\'HH:mm')
-        : '',
+      deadline: assignment ? format(new Date(assignment.deadline), 'yyyy-MM-dd\'T\'HH:mm') : '',
       allowResubmission: assignment?.allowResubmission ?? true,
-      maxScore: assignment?.maxScore || 100,
+      maxMarks: assignment?.maxMarks || 100,
     },
   });
   
@@ -32,10 +30,10 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
       reset({
         title: assignment.title,
         description: assignment.description,
-        batch: assignment.batch,
+        batch: assignment.batch._id || assignment.batch,
         deadline: format(new Date(assignment.deadline), 'yyyy-MM-dd\'T\'HH:mm'),
         allowResubmission: assignment.allowResubmission,
-        maxScore: assignment.maxScore,
+        maxMarks: assignment.maxMarks,
       });
     }
   }, [assignment, reset]);
@@ -53,7 +51,7 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
     formData.append('batch', data.batch);
     formData.append('deadline', new Date(data.deadline).toISOString());
     formData.append('allowResubmission', data.allowResubmission);
-    formData.append('maxScore', data.maxScore);
+    formData.append('maxMarks', data.maxMarks);
     formData.append('uploadedBy', user._id);
     
     // Only append file if a new one was selected or if creating a new assignment
@@ -147,23 +145,41 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
             </div>
             
             <div className="mb-4">
-              <label htmlFor="maxScore" className="label">
-                Maximum Score
+              <label htmlFor="maxMarks" className="label">
+                Maximum Marks
               </label>
               <input
-                id="maxScore"
+                id="maxMarks"
                 type="number"
                 min="1"
-                max="100"
+                max="1000"
                 className="input w-full"
-                {...register('maxScore', { 
-                  required: 'Maximum score is required',
-                  min: { value: 1, message: 'Minimum score should be 1' },
-                  max: { value: 100, message: 'Maximum score should be 100' }
+                {...register('maxMarks', { 
+                  required: 'Maximum marks is required',
+                  min: { value: 1, message: 'Minimum value is 1' },
+                  max: { value: 1000, message: 'Maximum value is 1000' }
                 })}
               />
-              {errors.maxScore && (
-                <p className="mt-1 text-sm text-red-500">{errors.maxScore.message}</p>
+              {errors.maxMarks && (
+                <p className="mt-1 text-sm text-red-500">{errors.maxMarks.message}</p>
+              )}
+            </div>
+            
+            <div className="mb-4">
+              <label htmlFor="file" className="label">
+                Instructions File {assignment && <span className="text-gray-400 text-xs">(Leave empty to keep current file)</span>}
+              </label>
+              <input
+                id="file"
+                type="file"
+                className="input w-full"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={handleFileChange}
+              />
+              {assignment && assignment.fileName && (
+                <p className="text-sm text-gray-400 mt-1">
+                  Current file: {assignment.fileName}
+                </p>
               )}
             </div>
             
@@ -171,33 +187,11 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
               <label className="inline-flex items-center">
                 <input
                   type="checkbox"
-                  className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-700 bg-gray-700 focus:ring-primary-500"
+                  className="form-checkbox h-5 w-5 text-primary-600"
                   {...register('allowResubmission')}
                 />
-                <span className="ml-2">Allow Resubmission</span>
+                <span className="ml-2">Allow Resubmission After Deadline</span>
               </label>
-            </div>
-            
-            <div className="mb-4">
-              <label htmlFor="file" className="label">
-                Assignment File {assignment && <span className="text-gray-400 text-xs">(Leave empty to keep current file)</span>}
-              </label>
-              <input
-                id="file"
-                type="file"
-                className="input w-full"
-                accept=".doc,.docx,.pdf,.zip,.rar"
-                onChange={handleFileChange}
-                {...register('file', { required: !assignment })}
-              />
-              {errors.file && (
-                <p className="mt-1 text-sm text-red-500">{errors.file.message}</p>
-              )}
-              {assignment && (
-                <p className="text-sm text-gray-400 mt-1">
-                  Current file: {assignment.fileName}
-                </p>
-              )}
             </div>
             
             <div className="flex justify-end mt-6 space-x-3">

@@ -6,81 +6,71 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // Check if user is already logged in on component mount
+  // Load user from localStorage on mount
   useEffect(() => {
-    const checkAuthStatus = () => {
+    const loadUserFromStorage = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
+        const storedUser = JSON.parse(localStorage.getItem('user'));
         
-        if (storedUser && token) {
-          // Set auth header for API calls
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          setUser(JSON.parse(storedUser));
+        if (token && storedUser) {
+          setUser(storedUser);
         }
-      } catch (err) {
-        console.error('Auth check failed:', err);
+      } catch (error) {
+        console.error('Error loading user from storage', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuthStatus();
+    loadUserFromStorage();
   }, []);
 
-  // Clear error function
-  const clearError = () => setError(null);
-
-  // Login function
+  // Login user
   const login = async (email, password) => {
     try {
-      setLoading(true);
-      clearError();
-      
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
       
-      // Save token to local storage
+      // Save to localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       
-      // Set auth header for future requests
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Update user state
       setUser(user);
-      
       return user;
-    } catch (err) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Failed to login');
-      throw err;
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
-  // Logout function
+  // Logout user
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    delete api.defaults.headers.common['Authorization'];
     setUser(null);
   };
 
+  // Update user profile
+  const updateUser = (updatedUser) => {
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      error, 
-      login, 
-      logout, 
-      clearError,
-      setUser, // Export this so App.jsx can use it
-      isAuthenticated: !!user
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        updateUser,
+        isAuthenticated: !!user
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

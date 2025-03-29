@@ -8,22 +8,33 @@ exports.getBatches = async (req, res) => {
   try {
     let query;
     
-    // If trainer, only get batches they are assigned to
-    if (req.user.role === 'trainer') {
-      query = Batch.find({ trainer: req.user._id });
-    } else {
+    // If admin, get all batches
+    if (req.user.role === 'admin') {
       query = Batch.find();
+    } 
+    // If trainer, only get batches they are assigned to
+    else if (req.user.role === 'trainer') {
+      query = Batch.find({ trainer: req.user._id });
     }
     
-    // Populate trainer information
+    // Add population and sorting
     query = query.populate({
       path: 'trainer',
       select: 'name email'
-    });
+    }).sort({ createdAt: -1 });
     
     const batches = await query;
     
-    res.status(200).json(batches);
+    // Get student counts for each batch
+    const batchesWithStats = await Promise.all(batches.map(async (batch) => {
+      const studentCount = await User.countDocuments({ batch: batch._id, role: 'student' });
+      return {
+        ...batch.toObject(),
+        studentCount
+      };
+    }));
+    
+    res.status(200).json(batchesWithStats);
   } catch (error) {
     console.error('Get batches error:', error);
     res.status(500).json({
@@ -81,23 +92,18 @@ exports.getBatch = async (req, res) => {
 exports.createBatch = async (req, res) => {
   try {
     const { name, description, trainer, startDate, endDate, active } = req.body;
-    
+
     // Validate required fields
     if (!name || !trainer || !startDate) {
-      return res.status(400).json({ message: 'Please provide name, trainer and start date' });
+      return res.status(400).json({ message: 'Please provide name, trainer, and start date' });
     }
-    
+
     // Check if trainer exists and is a trainer
     const trainerUser = await User.findById(trainer);
-    
-    if (!trainerUser) {
-      return res.status(404).json({ message: 'Trainer not found' });
+    if (!trainerUser || trainerUser.role !== 'trainer') {
+      return res.status(400).json({ message: 'Invalid trainer selected' });
     }
-    
-    if (trainerUser.role !== 'trainer') {
-      return res.status(400).json({ message: 'Selected user is not a trainer' });
-    }
-    
+
     // Create batch
     const batch = await Batch.create({
       name,
@@ -107,14 +113,11 @@ exports.createBatch = async (req, res) => {
       endDate,
       active: active !== undefined ? active : true
     });
-    
+
     res.status(201).json(batch);
   } catch (error) {
     console.error('Create batch error:', error);
-    res.status(500).json({
-      message: 'Server error creating batch',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json({ message: 'Server error creating batch' });
   }
 };
 

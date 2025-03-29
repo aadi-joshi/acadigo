@@ -2,26 +2,26 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 
-// Import only the functions that actually exist in authController
+// Import all functions from authController
 const { 
   login,
-  getMe
-} = require('../controllers/authController');
+  getMe,
+  register,
+  logout,
+  test
+} = require('../controllers/authController'); // Fixed missing closing parenthesis here
 
 // Public routes
 router.post('/login', login);
 
 // Test route to verify API is working
-router.get('/test', (req, res) => {
-  res.status(200).json({ message: 'Auth API is working' });
-});
+router.get('/test', test);
 
 // Protected routes
 router.get('/me', protect, getMe);
+router.get('/logout', protect, logout);
 
-// Comment out these routes until their controllers are implemented
-// router.post('/forgot-password', forgotPassword);
-// router.post('/reset-password/:resetToken', resetPassword);
-// router.post('/register', protect, authorize('admin'), register);
+// Enable the register route for admin
+router.post('/register', protect, authorize('admin'), register);
 
 module.exports = router;

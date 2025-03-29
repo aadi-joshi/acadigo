@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { AcademicCapIcon, PlusIcon, CalendarIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import { toast } from 'react-toastify';
 import BatchForm from '../../components/trainer/BatchForm';
 import StudentAssignmentForm from '../../components/trainer/StudentAssignmentForm';
@@ -15,6 +15,7 @@ export default function BatchManagement() {
   const [isStudentFormOpen, setIsStudentFormOpen] = useState(false);
   const [currentBatch, setCurrentBatch] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [trainers, setTrainers] = useState([]);
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
@@ -22,7 +23,7 @@ export default function BatchManagement() {
     const fetchBatches = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/batches');
+        const response = await api.get('/batches');
         setBatches(response.data);
         setLoading(false);
       } catch (err) {
@@ -34,6 +35,22 @@ export default function BatchManagement() {
 
     fetchBatches();
   }, []);
+
+  useEffect(() => {
+    const fetchTrainers = async () => {
+      try {
+        if (user.role === 'admin') {
+          const response = await api.get('/users?role=trainer');
+          setTrainers(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching trainers:', err);
+        toast.error('Failed to load trainers');
+      }
+    };
+
+    fetchTrainers();
+  }, [user.role]);
 
   const filteredBatches = batches.filter(batch => {
     const searchText = `${batch.name} ${batch.description || ''}`.toLowerCase();
@@ -63,7 +80,7 @@ export default function BatchManagement() {
     try {
       if (currentBatch) {
         // Update existing batch
-        const response = await axios.put(`/api/batches/${currentBatch._id}`, batchData);
+        const response = await api.put(`/batches/${currentBatch._id}`, batchData);
         setBatches(batches.map(batch => batch._id === currentBatch._id ? response.data : batch));
         toast.success('Batch updated successfully');
       } else {
@@ -72,7 +89,7 @@ export default function BatchManagement() {
           ...batchData,
           trainer: user.role === 'admin' ? batchData.trainer : user._id
         };
-        const response = await axios.post('/api/batches', data);
+        const response = await api.post('/batches', data);
         setBatches([...batches, response.data]);
         toast.success('Batch created successfully');
       }
@@ -195,6 +212,7 @@ export default function BatchManagement() {
         onClose={() => setIsBatchFormOpen(false)}
         onSubmit={handleBatchFormSubmit}
         batch={currentBatch}
+        trainers={trainers}
       />
       
       {currentBatch && (

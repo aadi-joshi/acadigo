@@ -23,7 +23,7 @@ export default function PPTManagement() {
         const pptsRes = await axios.get('/api/ppts');
         setPPTs(pptsRes.data);
         
-        // Fetch batches
+        // Fetch batches - for admin, get all batches; for trainer, get only their batches
         const batchesRes = await axios.get('/api/batches');
         setBatches(batchesRes.data);
         

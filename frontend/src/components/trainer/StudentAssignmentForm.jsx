@@ -1,52 +1,52 @@
 import { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
-import { UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
-import { toast } from 'react-toastify'; // Make sure react-toastify is installed: npm install react-toastify
+import { toast } from 'react-toastify';
 
 const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
   const [batchStudents, setBatchStudents] = useState([]);
   const [unassignedStudents, setUnassignedStudents] = useState([]);
-  const [searchBatchTerm, setSearchBatchTerm] = useState('');
-  const [searchUnassignedTerm, setSearchUnassignedTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('assigned');
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!isOpen || !batchId) return;
-      
       try {
         setLoading(true);
-        setError(null);
         
-        // Fetch students currently in the batch
-        const batchStudentsResponse = await axios.get(`/api/batches/${batchId}/students`);
-        setBatchStudents(batchStudentsResponse.data);
+        // Fetch students assigned to this batch
+        const batchStudentsRes = await axios.get(`/api/batches/${batchId}/students`);
+        setBatchStudents(batchStudentsRes.data);
         
-        // Fetch all students without a batch or that could be reassigned
-        const unassignedResponse = await axios.get('/api/users?role=student&unassigned=true');
-        setUnassignedStudents(unassignedResponse.data);
+        // Fetch unassigned students
+        const allStudentsRes = await axios.get('/api/users?role=student&unassigned=true');
+        setUnassignedStudents(allStudentsRes.data);
         
         setLoading(false);
       } catch (err) {
         console.error('Error fetching students:', err);
-        setError(err.response?.data?.message || 'An error occurred while fetching students');
+        setError(err.response?.data?.message || 'Failed to load students');
         setLoading(false);
       }
     };
     
-    fetchData();
+    if (isOpen && batchId) {
+      fetchData();
+    }
   }, [isOpen, batchId]);
 
+  // Filter students based on search term
   const filteredBatchStudents = batchStudents.filter(student => {
-    const searchText = `${student.name} ${student.email}`.toLowerCase();
-    return searchText.includes(searchBatchTerm.toLowerCase());
+    const searchFields = `${student.name} ${student.email}`.toLowerCase();
+    return searchFields.includes(searchTerm.toLowerCase());
   });
-  
+
   const filteredUnassignedStudents = unassignedStudents.filter(student => {
-    const searchText = `${student.name} ${student.email}`.toLowerCase();
-    return searchText.includes(searchUnassignedTerm.toLowerCase());
+    const searchFields = `${student.name} ${student.email}`.toLowerCase();
+    return searchFields.includes(searchTerm.toLowerCase());
   });
 
   const handleAddStudent = async (studentId) => {
@@ -97,25 +97,48 @@ const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
             </div>
           )}
           
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search students..."
+              className="input w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex border-b border-gray-700 mb-4">
+            <button
+              className={`py-2 px-4 font-medium ${
+                activeTab === 'assigned' 
+                  ? 'text-primary-400 border-b-2 border-primary-400' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setActiveTab('assigned')}
+            >
+              Assigned Students ({batchStudents.length})
+            </button>
+            <button
+              className={`py-2 px-4 font-medium ${
+                activeTab === 'unassigned' 
+                  ? 'text-primary-400 border-b-2 border-primary-400' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setActiveTab('unassigned')}
+            >
+              Available Students ({unassignedStudents.length})
+            </button>
+          </div>
+          
           {loading ? (
-            <div className="flex justify-center p-6">
-              <div className="loader"></div>
+            <div className="text-center p-4">
+              <div className="loader mx-auto"></div>
+              <p className="mt-2 text-gray-400">Loading students...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Students in batch */}
+            activeTab === 'assigned' ? (
               <div>
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search students in batch..."
-                    className="input w-full"
-                    value={searchBatchTerm}
-                    onChange={(e) => setSearchBatchTerm(e.target.value)}
-                  />
-                </div>
-                
-                <h3 className="text-lg font-medium mb-3">Students in Batch</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Students in Batch</h3>
                 {filteredBatchStudents.length > 0 ? (
                   <ul className="divide-y divide-gray-700 max-h-96 overflow-y-auto">
                     {filteredBatchStudents.map(student => (
@@ -135,23 +158,12 @@ const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-gray-400">No students in this batch</p>
+                  <p className="text-gray-400">No students currently assigned to this batch</p>
                 )}
               </div>
-              
-              {/* Unassigned students */}
+            ) : (
               <div>
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search available students..."
-                    className="input w-full"
-                    value={searchUnassignedTerm}
-                    onChange={(e) => setSearchUnassignedTerm(e.target.value)}
-                  />
-                </div>
-                
-                <h3 className="text-lg font-medium mb-3">Available Students</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Available Students</h3>
                 {filteredUnassignedStudents.length > 0 ? (
                   <ul className="divide-y divide-gray-700 max-h-96 overflow-y-auto">
                     {filteredUnassignedStudents.map(student => (
@@ -174,7 +186,7 @@ const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
                   <p className="text-gray-400">No available students to add</p>
                 )}
               </div>
-            </div>
+            )
           )}
           
           <div className="mt-6 flex justify-end">
