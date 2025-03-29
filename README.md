@@ -20,7 +20,7 @@
 
 - Node.js (v14+)
 - MongoDB (local or Atlas cloud)
-- Firebase account (for Storage)
+- Supabase account (for Storage)
 - Email service credentials (for notifications)
 
 ## User Roles and Permissions
@@ -122,7 +122,7 @@ The application is built with a modern tech stack following a client-server arch
    - Mongoose for data modeling
 
 4. **External Services**
-   - Firebase Storage for file storage
+   - Supabase Storage for file storage
    - Nodemailer for email notifications
 
 ## 🛠️ Tech Stack
@@ -130,11 +130,11 @@ The application is built with a modern tech stack following a client-server arch
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Supabase](https://img.shields.io/badge/Supabase-FFCA28?style=for-the-badge&logo=Supabase&logoColor=black)
 - **Frontend**: React, Vite, Tailwind CSS, Headless UI, React Router
 - **Backend**: Node.js, Express, JWT Authentication
 - **Database**: MongoDB with Mongoose
-- **Storage**: Firebase Storage for files
+- **Storage**: Supabase Storage for files
 - **Email**: Nodemailer for notifications
 - **Deployment**: Ready for Vercel, Railway, or any modern hosting platform
 
