@@ -34,8 +34,8 @@
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/yourusername/ppt-access-control.git
-   cd ppt-access-control
+   git clone https://github.com/aadi-joshi/acadigo.git
+   cd acadigo
    ```
 
 2. Install dependencies for both frontend and backend
