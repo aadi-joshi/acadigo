@@ -30,8 +30,8 @@ export const AuthProvider = ({ children }) => {
     loadUserFromStorage();
   }, []);
 
-  // Login user
-  const login = async (email, password) => {
+  // Login user with retry and better rate limit handling
+  const login = async (email, password, retryCount = 0) => {
     setError(null);
     try {
       console.log('Attempting login with API URL:', api.defaults.baseURL);
@@ -50,6 +50,8 @@ export const AuthProvider = ({ children }) => {
               } else {
                 throw new Error(`Cannot connect to API server at ${api.defaults.baseURL}. Please check your network connection and server status.`);
               }
+            } else if (err.response?.status === 429) {
+              throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
             }
             // If it's not a network error, continue with login
           });
@@ -71,11 +73,21 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       return user;
     } catch (error) {
+      // Handle rate limiting errors with retry
+      if (error.response?.status === 429 && retryCount < 2) {
+        console.log(`Rate limited. Retrying login attempt ${retryCount + 1} in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return login(email, password, retryCount + 1);
+      }
+
       console.error('Login error:', error);
       const errorMessage = 
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to login. Please check your credentials.';
+        error.response?.status === 429 
+          ? 'Too many login attempts. Please wait a moment before trying again.' 
+          : error.response?.data?.message || 
+            error.message || 
+            'Failed to login. Please check your credentials.';
+      
       setError(errorMessage);
       throw error;
     }

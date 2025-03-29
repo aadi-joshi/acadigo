@@ -24,50 +24,36 @@ let supabase;
 try {
   supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 } catch (error) {
-  console.error('Failed to initialize Supabase client:', error.message);
-  // Create a mock client for development if Supabase is not configured
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Using mock Supabase client for development...');
-    supabase = {
-      storage: {
-        from: () => ({
-          upload: async () => ({ data: { path: 'mock-path' }, error: null }),
-          getPublicUrl: () => ({ data: { publicUrl: 'https://mock-url.com/file.pdf' } }),
-          remove: async () => ({ error: null })
-        })
-      }
-    };
-  }
+  console.error('Failed to initialize Supabase client:', error);
+  // Create a dummy client that will throw errors when used
+  supabase = {
+    storage: {
+      from: () => ({
+        upload: () => Promise.reject(new Error('Supabase client not initialized')),
+        remove: () => Promise.reject(new Error('Supabase client not initialized')),
+        getPublicUrl: () => ({ data: { publicUrl: '' } })
+      })
+    }
+  };
 }
 
-/**
- * Upload file to Supabase Storage
- * @param {Object} file - Express multer file object
- * @param {String} path - Path to store file in bucket (e.g. 'ppts/filename.pdf')
- * @param {Object} user - User object from request
- * @returns {Object} File data including URL, path, name, and size
- */
-const uploadFile = async (file, path, user) => {
+// Upload a file to Supabase Storage
+const uploadFile = async (file, path, user = null) => {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Supabase not configured properly. Using mock file data.');
-      return {
-        fileUrl: `https://mock-file-url.com/${path}`,
-        filePath: path,
-        fileName: file.originalname,
-        fileSize: file.size
-      };
-    }
-
-    // Generate unique file path
-    const filePath = `${path.split('/')[0]}/${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+    console.log(`Uploading file to Supabase: ${path}`);
     
-    // Upload file to Supabase Storage
-    const { data, error } = await supabase.storage
+    // Get the file buffer and content type
+    const fileBuffer = file.buffer;
+    const contentType = file.mimetype;
+    
+    // Upload to Supabase
+    const { data, error } = await supabase
+      .storage
       .from(BUCKET_NAME)
-      .upload(filePath, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false,
+      .upload(path, fileBuffer, {
+        contentType,
+        upsert: true,
+        cacheControl: '3600'
       });
     
     if (error) {
@@ -75,38 +61,36 @@ const uploadFile = async (file, path, user) => {
       throw new Error(`Failed to upload file: ${error.message}`);
     }
     
-    // Get public URL for the file
-    const { data: urlData } = supabase.storage
+    // Get public URL
+    const { data: urlData } = supabase
+      .storage
       .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
+      .getPublicUrl(path);
     
+    console.log('File uploaded successfully. URL:', urlData.publicUrl);
+    
+    // Return file data
     return {
       fileUrl: urlData.publicUrl,
-      filePath: filePath,
+      filePath: path,
       fileName: file.originalname,
-      fileSize: file.size
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      uploadedBy: user ? user._id : null
     };
   } catch (error) {
-    console.error('File upload error:', error);
-    throw error;
+    console.error('Error uploading file to Supabase:', error);
+    throw new Error('Failed to upload file');
   }
 };
 
-/**
- * Delete file from Supabase Storage
- * @param {String} filePath - Path of file in bucket
- * @returns {Boolean} Success status
- */
+// Delete a file from Supabase Storage
 const deleteFile = async (filePath) => {
   try {
-    if (!filePath) return true;
+    console.log(`Deleting file from Supabase: ${filePath}`);
     
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Supabase not configured properly. Skipping file deletion.');
-      return true;
-    }
-    
-    const { error } = await supabase.storage
+    const { data, error } = await supabase
+      .storage
       .from(BUCKET_NAME)
       .remove([filePath]);
     
@@ -115,14 +99,16 @@ const deleteFile = async (filePath) => {
       throw new Error(`Failed to delete file: ${error.message}`);
     }
     
+    console.log('File deleted successfully');
     return true;
   } catch (error) {
-    console.error('File delete error:', error);
-    throw error;
+    console.error('Error deleting file from Supabase:', error);
+    throw new Error('Failed to delete file');
   }
 };
 
 module.exports = {
+  supabase,
   uploadFile,
   deleteFile
 };

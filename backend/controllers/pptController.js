@@ -99,6 +99,13 @@ exports.uploadPPT = async (req, res) => {
       return res.status(400).json({ message: 'Please upload a file' });
     }
 
+    // Log file details for debugging
+    console.log('File upload received:', {
+      filename: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
     // Validate required fields
     if (!title || !batch) {
       return res.status(400).json({ message: 'Please provide title and batch' });
@@ -115,12 +122,18 @@ exports.uploadPPT = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to upload PPTs to this batch' });
     }
 
+    // Generate a unique filename to prevent collisions
+    const timestamp = Date.now();
+    const uniqueFilename = `ppts/${timestamp}-${req.file.originalname.replace(/\s+/g, '_')}`;
+
     // Upload file to Supabase Storage
     const fileData = await uploadFile(
       req.file, 
-      `ppts/${req.file.originalname}`,
+      uniqueFilename,
       req.user
     );
+
+    console.log('File uploaded to Supabase:', fileData);
 
     // Create PPT in database
     const ppt = await PPT.create({
@@ -142,7 +155,12 @@ exports.uploadPPT = async (req, res) => {
       // Continue even if notification fails
     }
 
-    res.status(201).json(ppt);
+    // Return the created PPT with populated references
+    const populatedPPT = await PPT.findById(ppt._id)
+      .populate('batch', 'name')
+      .populate('uploadedBy', 'name role');
+
+    res.status(201).json(populatedPPT);
   } catch (error) {
     console.error('Upload PPT error:', error);
     res.status(500).json({
@@ -181,30 +199,48 @@ exports.updatePPT = async (req, res) => {
     // Update file if provided
     let fileData = null;
     if (req.file) {
-      // Delete old file from Supabase
-      await deleteFile(ppt.filePath);
+      try {
+        // Delete old file from Supabase
+        await deleteFile(ppt.filePath);
 
-      // Upload new file to Supabase Storage
-      const fileName = `ppts/${Date.now()}-${req.file.originalname}`;
-      fileData = await uploadFile(req.file, fileName, req.user);
+        // Generate unique filename for new file
+        const timestamp = Date.now();
+        const uniqueFilename = `ppts/${timestamp}-${req.file.originalname.replace(/\s+/g, '_')}`;
+
+        // Upload new file to Supabase Storage
+        fileData = await uploadFile(req.file, uniqueFilename, req.user);
+        
+        console.log('File updated in Supabase:', fileData);
+      } catch (fileError) {
+        console.error('Error updating file in Supabase:', fileError);
+        return res.status(500).json({ message: 'Error updating file' });
+      }
     }
 
-    // Update PPT
+    // Update PPT in database
+    const updateData = {
+      title,
+      description,
+      batch,
+      ...(fileData && {
+        fileUrl: fileData.fileUrl,
+        filePath: fileData.filePath,
+        fileName: fileData.fileName,
+        fileSize: fileData.fileSize
+      })
+    };
+
+    // Only include fields that were provided in the request
+    Object.keys(updateData).forEach(key => 
+      updateData[key] === undefined && delete updateData[key]
+    );
+
     ppt = await PPT.findByIdAndUpdate(
       req.params.id,
-      {
-        title,
-        description,
-        batch,
-        ...(fileData && {
-          fileUrl: fileData.fileUrl,
-          filePath: fileData.filePath,
-          fileName: fileData.fileName,
-          fileSize: fileData.fileSize
-        })
-      },
+      updateData,
       { new: true, runValidators: true }
-    );
+    ).populate('batch', 'name')
+     .populate('uploadedBy', 'name role');
 
     res.status(200).json(ppt);
   } catch (error) {

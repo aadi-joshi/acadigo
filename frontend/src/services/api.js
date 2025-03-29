@@ -82,12 +82,29 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for error handling
+// Add response interceptor for error handling with retry capability
+let isRetrying = false;
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     // Log detailed API errors for debugging
     console.error('API Error:', error.response?.data || error.message);
+    
+    // Handle rate limiting with exponential backoff
+    if (error.response?.status === 429 && !isRetrying) {
+      isRetrying = true;
+      
+      // Wait between 1-3 seconds before retrying
+      const retryDelay = Math.floor(Math.random() * 2000) + 1000;
+      console.log(`Rate limited. Retrying after ${retryDelay}ms delay...`);
+      
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      
+      isRetrying = false;
+      // Retry the request
+      return api.request(error.config);
+    }
     
     if (error.response) {
       // Handle 401 Unauthorized errors

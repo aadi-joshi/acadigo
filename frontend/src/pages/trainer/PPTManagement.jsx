@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { DocumentTextIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PPTForm from '../../components/trainer/PPTForm';
+import api from '../../services/api';
+import AuthContext from '../../context/AuthContext';
 
 export default function PPTManagement() {
+  const { user } = useContext(AuthContext);
   const [ppts, setPPTs] = useState([]);
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState('all');
@@ -18,19 +20,22 @@ export default function PPTManagement() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        console.log('Fetching PPTs and batches...');
         
-        // Fetch PPTs
-        const pptsRes = await axios.get('/api/ppts');
-        setPPTs(pptsRes.data);
-        
-        // Fetch batches - for admin, get all batches; for trainer, get only their batches
-        const batchesRes = await axios.get('/api/batches');
+        // Fetch batches first to ensure we have them for the form
+        const batchesRes = await api.get('/batches');
+        console.log('Batches fetched:', batchesRes.data);
         setBatches(batchesRes.data);
+        
+        // Then fetch PPTs
+        const pptsRes = await api.get('/ppts');
+        console.log('PPTs fetched:', pptsRes.data);
+        setPPTs(pptsRes.data);
         
         setLoading(false);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch data');
         console.error('Error fetching data:', err);
+        setError(err.response?.data?.message || 'Failed to fetch data');
         setLoading(false);
       }
     };
@@ -56,34 +61,59 @@ export default function PPTManagement() {
   const handleDeletePPT = async (pptId) => {
     if (window.confirm('Are you sure you want to delete this PPT?')) {
       try {
-        await axios.delete(`/api/ppts/${pptId}`);
+        setLoading(true);
+        console.log('Deleting PPT:', pptId);
+        await api.delete(`/ppts/${pptId}`);
         setPPTs(ppts.filter(ppt => ppt._id !== pptId));
         toast.success('PPT deleted successfully');
       } catch (err) {
         console.error('Error deleting PPT:', err);
         toast.error(err.response?.data?.message || 'Error deleting PPT');
+      } finally {
+        setLoading(false);
       }
     }
   };
 
+  const handleCloseForm = () => {
+    setIsPPTFormOpen(false);
+  };
+
   const handlePPTFormSubmit = async (formData) => {
     try {
+      setLoading(true);
+      
+      // Log form data for debugging (excluding file content)
+      const formDataEntries = {};
+      for (let [key, value] of formData.entries()) {
+        if (key !== 'file' || !value.name) {
+          formDataEntries[key] = value;
+        } else {
+          formDataEntries[key] = `File: ${value.name}`;
+        }
+      }
+      console.log('Submitting form data:', formDataEntries);
+      
       if (currentPPT) {
         // Update existing PPT
-        const response = await axios.put(`/api/ppts/${currentPPT._id}`, formData, {
+        console.log('Updating PPT:', currentPPT._id);
+        const response = await api.put(`/ppts/${currentPPT._id}`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
-          },
+          }
         });
+        console.log('PPT updated:', response.data);
         setPPTs(ppts.map(ppt => ppt._id === currentPPT._id ? response.data : ppt));
         toast.success('PPT updated successfully');
       } else {
         // Create new PPT
-        const response = await axios.post('/api/ppts', formData, {
+        console.log('Creating new PPT');
+        const response = await api.post('/ppts', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
-          },
+          }
         });
+        console.log('PPT created:', response.data);
         setPPTs([...ppts, response.data]);
         toast.success('PPT uploaded successfully');
       }
@@ -92,6 +122,8 @@ export default function PPTManagement() {
     } catch (err) {
       console.error('Error saving PPT:', err);
       toast.error(err.response?.data?.message || 'Error saving PPT');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -215,9 +247,10 @@ export default function PPTManagement() {
         </div>
       )}
 
+      {/* Pass proper props to PPTForm */}
       <PPTForm
         isOpen={isPPTFormOpen}
-        onClose={() => setIsPPTFormOpen(false)}
+        onClose={handleCloseForm}
         onSubmit={handlePPTFormSubmit}
         ppt={currentPPT}
         batches={batches}

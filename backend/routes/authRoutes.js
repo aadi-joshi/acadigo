@@ -9,9 +9,9 @@ const {
   register,
   logout,
   test
-} = require('../controllers/authController'); // Fixed missing closing parenthesis here
+} = require('../controllers/authController');
 
-// Public routes
+// Public routes - these should already have the auth limiter applied from server.js
 router.post('/login', login);
 
 // Test route to verify API is working

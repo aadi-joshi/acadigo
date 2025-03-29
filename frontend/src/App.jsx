@@ -21,6 +21,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const Settings = lazy(() => import('./pages/admin/Settings'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
+const SystemDebug = lazy(() => import('./pages/admin/SystemDebug'));
 
 function App() {
   const { user, loading } = useContext(AuthContext);
@@ -71,6 +72,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/debug"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <SystemDebug />
               </ProtectedRoute>
             }
           />

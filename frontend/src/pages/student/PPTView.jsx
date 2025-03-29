@@ -4,6 +4,7 @@ import api from '../../services/api';
 import AuthContext from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { DocumentTextIcon, ArrowTopRightOnSquareIcon, ArrowDownTrayIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
 export default function PPTView() {
   const { user, isAuthenticated } = useContext(AuthContext);
@@ -12,23 +13,39 @@ export default function PPTView() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPPT, setSelectedPPT] = useState(null);
+  const [viewerError, setViewerError] = useState(false);
   const { id } = useParams();
 
   useEffect(() => {
     const fetchPPTs = async () => {
       try {
         setLoading(true);
+        console.log('Fetching PPTs...');
         
         // Use our api service which automatically includes auth token
         const { data } = await api.get('/ppts');
+        console.log('PPTs fetched successfully:', data.length);
         setPPTs(data);
         
         // If ID is provided in URL, fetch that specific PPT
         if (id) {
-          const { data: pptData } = await api.get(`/ppts/${id}`);
-          setSelectedPPT(pptData);
-          // Log the view
-          await api.post(`/logs/ppt/${id}/view`);
+          try {
+            console.log('Fetching specific PPT:', id);
+            const { data: pptData } = await api.get(`/ppts/${id}`);
+            console.log('Specific PPT fetched:', pptData);
+            setSelectedPPT(pptData);
+            // Log the view
+            await api.post(`/logs/ppt/${id}/view`);
+          } catch (specificError) {
+            console.error('Error fetching specific PPT:', specificError);
+            // Only set error if we couldn't fetch any PPTs at all
+            if (data.length === 0) {
+              setError('PPT not found or you do not have permission to access it');
+            }
+          }
+        } else if (data.length > 0) {
+          // Select the first PPT if no specific one is requested
+          setSelectedPPT(data[0]);
         }
       } catch (err) {
         console.error('Error fetching PPTs:', err);
@@ -55,6 +72,7 @@ export default function PPTView() {
   const handlePPTClick = async (ppt) => {
     try {
       setSelectedPPT(ppt);
+      setViewerError(false);
       // Log the view
       await api.post(`/logs/ppt/${ppt._id}/view`);
     } catch (err) {
@@ -63,14 +81,23 @@ export default function PPTView() {
   };
 
   const handleDownload = async (e, ppt) => {
+    e.preventDefault();
     e.stopPropagation();
     try {
+      console.log('Downloading PPT:', ppt.fileName);
       window.open(ppt.fileUrl, '_blank');
       // Log the download
       await api.post(`/logs/ppt/${ppt._id}/download`);
+      toast.success('Download started');
     } catch (err) {
       console.error('Error downloading PPT:', err);
+      toast.error('Failed to download file');
     }
+  };
+
+  const handleViewerError = () => {
+    console.log('PDF/PPT viewer error occurred');
+    setViewerError(true);
   };
 
   // Filter PPTs based on search term
@@ -196,14 +223,33 @@ export default function PPTView() {
               </div>
             </div>
             
-            <div className="flex-1 bg-gray-900 overflow-hidden">
-              <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(selectedPPT.fileUrl)}&embedded=true`}
-                className="w-full h-full"
-                title={selectedPPT.title}
-                frameBorder="0"
-              ></iframe>
-            </div>
+            {viewerError ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-4">
+                <DocumentTextIcon className="h-16 w-16 text-gray-500 mb-4" />
+                <h2 className="text-xl font-medium text-white mb-2">Viewer Not Available</h2>
+                <p className="text-gray-400 text-center max-w-md mb-4">
+                  The document viewer encountered an error. You can still download the file to view it locally.
+                </p>
+                <a
+                  href={selectedPPT.fileUrl}
+                  download
+                  className="btn-primary"
+                  onClick={() => api.post(`/logs/ppt/${selectedPPT._id}/download`)}
+                >
+                  Download File
+                </a>
+              </div>
+            ) : (
+              <div className="flex-1 bg-gray-900 overflow-hidden">
+                <iframe
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(selectedPPT.fileUrl)}&embedded=true`}
+                  className="w-full h-full"
+                  title={selectedPPT.title}
+                  frameBorder="0"
+                  onError={handleViewerError}
+                ></iframe>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-4">

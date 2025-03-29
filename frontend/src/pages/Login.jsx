@@ -32,10 +32,8 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Clear previous errors
-    setErrorMessage('');
     setPasswordError(false);
+    setErrorMessage('');
     
     if (!email || !password) {
       setErrorMessage('Please enter both email and password');
@@ -75,13 +73,13 @@ export default function Login() {
       });
       
       // Provide more specific error feedback
-      if (err.response?.status === 401 || 
+      if (err.response?.status === 429) {
+        setErrorMessage('Too many login attempts. Please wait a moment before trying again.');
+      } else if (err.response?.status === 401 || 
           errorMsg.toLowerCase().includes('credential') || 
           errorMsg.toLowerCase().includes('invalid')) {
         setPasswordError(true);
         setErrorMessage('Invalid email or password. Please try again.');
-      } else if (err.response?.status === 429) {
-        setErrorMessage('Too many login attempts. Please try again later.');
       } else {
         setErrorMessage(errorMsg);
       }
