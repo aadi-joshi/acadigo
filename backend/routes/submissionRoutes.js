@@ -4,9 +4,10 @@ const {
   getMySubmissions,
   gradeSubmission 
 } = require('../controllers/submissionController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/auth');
 
-router.get('/my-submissions', protect, authorize('student'), getMySubmissions);
-router.post('/:id/grade', protect, authorize('admin', 'trainer'), gradeSubmission);
+router.use(protect);
+router.get('/my-submissions', authorize('student'), getMySubmissions);
+router.post('/:id/grade', authorize('admin', 'trainer'), gradeSubmission);
 
 module.exports = router;

@@ -10,47 +10,52 @@ const generateToken = (id) => {
   });
 };
 
-// @desc    Login user & get token
+// @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validate email and password
+    
+    console.log('Login attempt for:', email);
+    
+    // Validate email & password
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
-
+    
     // Check for user
     const user = await User.findOne({ email }).select('+password');
-
+    
     if (!user) {
+      console.log('User not found with email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    
+    console.log(`User found: ${user.name}, role: ${user.role}`);
 
     // Check if password matches
-    const isMatch = await user.comparePassword(password);
-
+    const isMatch = await bcrypt.compare(password, user.password);
+    
     if (!isMatch) {
+      console.log('Password does not match for user:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    
+    console.log('Password verified successfully');
 
     // Create token
     const token = generateToken(user._id);
 
-    // Create activity log
-    await ActivityLog.create({
-      user: user._id,
-      actionType: 'login',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    // Update last login time
+    user.lastLogin = new Date();
+    await user.save({ validateBeforeSave: false });
 
     // Don't send the password back
-    const userResponse = { ...user.toObject() };
+    const userResponse = user.toObject();
     delete userResponse.password;
 
+    console.log('Login successful, sending response');
     res.status(200).json({
       user: userResponse,
       token

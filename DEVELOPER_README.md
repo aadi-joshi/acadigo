@@ -8,7 +8,7 @@ The application follows a client-server architecture:
 - **Frontend**: React with Vite, Tailwind CSS
 - **Backend**: Node.js with Express
 - **Database**: MongoDB
-- **Storage**: Firebase Storage
+- **Storage**: Supabase Storage
 - **Authentication**: JWT-based
 - **Email Service**: Nodemailer
 
@@ -24,18 +24,74 @@ The application follows a client-server architecture:
    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/ppt-access-system
    ```
 
-### Firebase Storage Setup
+### Supabase Storage Setup
 
-1. Create a Firebase project
-2. Enable Storage in your project
-3. Get your service account key:
-   - Go to Project Settings > Service Accounts
-   - Generate a new private key (JSON file)
-4. Place the JSON file in the backend directory (e.g., `firebase-service-account.json`)
-5. Add to backend `.env` file:
+1. Create a Supabase account at https://supabase.com
+2. Create a new project:
+   - Go to the Supabase dashboard
+   - Click "New Project"
+   - Enter a name for your project
+   - Set a secure database password
+   - Choose a region closest to your users
+   - Click "Create new project"
+
+3. Set up storage:
+   - In your Supabase project dashboard, navigate to "Storage" in the left sidebar
+   - Click "Create a new bucket"
+   - Name it `acadigo` (or your preferred name)
+   - Set access to "Private" for security
+
+4. Configure storage policies:
+   - Click on your bucket name
+   - Go to the "Policies" tab
+   - Create the following policies:
+
+   **For authenticated users to read files:**
+   - Click "Add Policies" and select "Give users access to a folder only to authenticated users" template
+   - Name: "Allow authenticated reads"
+   - Policy definition: Use the default SQL but make sure it looks like:
+     ```sql
+     bucket_id = 'acadigo' AND auth.role() = 'authenticated'
+     ```
+   - Select operations: SELECT
+
+   **For trainers and admins to upload files:**
+   - Click "Create Policy" and select "Custom"
+   - Name: "Allow admin and trainer uploads"
+   - Policy definition:
+     ```sql
+     bucket_id = 'acadigo' AND auth.jwt() ->> 'role' IN ('admin', 'trainer')
+     ```
+   - Select operations: INSERT, UPDATE, DELETE
+
+   **For students to upload their assignment submissions:**
+   - Click "Create Policy" and select "Custom"
+   - Name: "Allow student submissions"
+   - Policy definition:
+     ```sql
+     bucket_id = 'acadigo' AND auth.jwt() ->> 'role' = 'student' AND name LIKE 'submissions/%'
+     ```
+   - Select operations: INSERT
+
+5. Get your API keys:
+   - Go to Project Settings > API
+   - Copy the Project URL (will be your `SUPABASE_URL`)
+   - Under Project API keys:
+     - Copy the "anon public" key (will be your `VITE_SUPABASE_ANON_KEY` for frontend)
+     - Copy the "service_role" key (will be your `SUPABASE_SERVICE_ROLE_KEY` for backend - keep this secure!)
+
+6. Add to backend `.env` file:
    ```
-   FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
-   GOOGLE_APPLICATION_CREDENTIALS=./firebase-service-account.json
+   SUPABASE_URL=https://your-project-id.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   SUPABASE_BUCKET_NAME=acadigo
+   ```
+
+7. Add to frontend `.env` file (if needed for client-side uploads):
+   ```
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   VITE_SUPABASE_BUCKET_NAME=acadigo
    ```
 
 ### Email Configuration
@@ -99,7 +155,7 @@ Comprehensive API documentation can be found in the backend code comments or use
 
 Common issues and their solutions:
 - Connection issues with MongoDB: Check network settings and IP whitelist
-- Firebase permissions: Verify service account privileges
+- Supabase permissions: Verify storage policies and API keys
 - Email sending failures: Test SMTP settings and check credentials
 
 ## Performance Considerations

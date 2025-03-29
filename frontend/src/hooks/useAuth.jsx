@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, createContext } from 'react';
+import { useState, useEffect, createContext } from 'react';
 import { users } from '../utils/mockData';
 
 // Create context
@@ -150,6 +150,10 @@ export const AuthProvider = ({ children }) => {
 };
 
 // Custom hook to use auth context
-export default function useAuth() {
+import { useContext } from 'react';
+
+const useAuth = () => {
   return useContext(AuthContext);
-}
+};
+
+export default useAuth;

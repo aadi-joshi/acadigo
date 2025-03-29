@@ -11,14 +11,20 @@ const {
   submitAssignment,
   getSubmissions
 } = require('../controllers/assignmentController');
-const { protect, authorize } = require('../middleware/authMiddleware');
 
-router.get('/', protect, getAssignments);
-router.get('/:id', protect, getAssignment);
-router.post('/', protect, authorize('admin', 'trainer'), upload.single('file'), createAssignment);
-router.put('/:id', protect, authorize('admin', 'trainer'), upload.single('file'), updateAssignment);
-router.delete('/:id', protect, authorize('admin', 'trainer'), deleteAssignment);
-router.post('/:id/submit', protect, authorize('student'), upload.array('files'), submitAssignment);
-router.get('/:id/submissions', protect, authorize('admin', 'trainer'), getSubmissions);
+// Import the correct middleware path - this is likely the issue
+const { protect, authorize } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(protect);
+
+// Define routes with proper middleware and handlers
+router.get('/', getAssignments);
+router.get('/:id', getAssignment);
+router.post('/', authorize('admin', 'trainer'), upload.single('file'), createAssignment);
+router.put('/:id', authorize('admin', 'trainer'), upload.single('file'), updateAssignment);
+router.delete('/:id', authorize('admin', 'trainer'), deleteAssignment);
+router.post('/:id/submit', authorize('student'), upload.array('files'), submitAssignment);
+router.get('/:id/submissions', authorize('admin', 'trainer'), getSubmissions);
 
 module.exports = router;

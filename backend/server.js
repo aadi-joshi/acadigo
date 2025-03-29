@@ -5,6 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
+const mongoose = require('mongoose');
 
 // Load env vars
 dotenv.config();
@@ -43,6 +44,20 @@ const apiLimiter = rateLimit({
 
 // Apply rate limiting middleware
 app.use('/api', apiLimiter);
+
+// Add this debug endpoint
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    res.json({ 
+      dbConnected: mongoose.connection.readyState === 1,
+      collections: collectionNames
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Mount routers
 app.use('/api/auth', authRoutes);

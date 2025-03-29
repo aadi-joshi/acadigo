@@ -1,6 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
-import jwt_decode from 'jwt-decode';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
@@ -8,87 +7,69 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
+  // Check if user is already logged in on component mount
   useEffect(() => {
-    // Check if user is logged in when component mounts
-    const token = localStorage.getItem('token');
-    if (token) {
+    const checkAuthStatus = () => {
       try {
-        const decodedToken = jwt_decode(token);
-        const currentTime = Date.now() / 1000;
+        const storedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
         
-        if (decodedToken.exp < currentTime) {
-          // Token expired
-          logout();
-        } else {
-          // Set the authorization header for all requests
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          // Fetch user data
-          fetchUserData();
+        if (storedUser && token) {
+          // Set auth header for API calls
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          setUser(JSON.parse(storedUser));
         }
       } catch (err) {
-        console.error('Invalid token', err);
-        logout();
+        console.error('Auth check failed:', err);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setLoading(false);
-    }
+    };
+
+    checkAuthStatus();
   }, []);
-  
-  const fetchUserData = async () => {
-    try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/me`);
-      setUser(response.data);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching user data', err);
-      logout();
-      setLoading(false);
-    }
-  };
-  
+
+  // Clear error function
+  const clearError = () => setError(null);
+
+  // Login function
   const login = async (email, password) => {
     try {
       setLoading(true);
-      setError(null);
+      clearError();
       
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, {
-        email,
-        password
-      });
-      
+      const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
       
-      // Save the token to local storage
+      // Save token to local storage
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
       
-      // Set the authorization header for all requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Set auth header for future requests
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      // Update the user state
+      // Update user state
       setUser(user);
       
       return user;
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred during login');
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || 'Failed to login');
       throw err;
     } finally {
       setLoading(false);
     }
   };
-  
+
+  // Logout function
   const logout = () => {
-    // Remove the token from local storage
     localStorage.removeItem('token');
-    
-    // Remove the authorization header
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Clear the user state
+    localStorage.removeItem('user');
+    delete api.defaults.headers.common['Authorization'];
     setUser(null);
   };
-  
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -96,7 +77,9 @@ export const AuthProvider = ({ children }) => {
       error, 
       login, 
       logout, 
-      isAuthenticated: !!user 
+      clearError,
+      setUser, // Export this so App.jsx can use it
+      isAuthenticated: !!user
     }}>
       {children}
     </AuthContext.Provider>

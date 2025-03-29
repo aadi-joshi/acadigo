@@ -1,7 +1,7 @@
 const PPT = require('../models/PPT');
 const Batch = require('../models/Batch');
 const User = require('../models/User');
-const { uploadFile, deleteFile } = require('../config/firebase');
+const { uploadFile, deleteFile } = require('../utils/supabase');
 const { sendNewPPTNotification } = require('../utils/email');
 
 // @desc    Get all PPTs for the current user
@@ -115,9 +115,12 @@ exports.uploadPPT = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to upload PPTs to this batch' });
     }
 
-    // Upload file to Firebase
-    const fileName = `ppts/${Date.now()}-${req.file.originalname}`;
-    const fileData = await uploadFile(req.file, fileName);
+    // Upload file to Supabase Storage
+    const fileData = await uploadFile(
+      req.file, 
+      `ppts/${req.file.originalname}`,
+      req.user
+    );
 
     // Create PPT in database
     const ppt = await PPT.create({
@@ -178,12 +181,12 @@ exports.updatePPT = async (req, res) => {
     // Update file if provided
     let fileData = null;
     if (req.file) {
-      // Delete old file from Firebase
+      // Delete old file from Supabase
       await deleteFile(ppt.filePath);
 
-      // Upload new file to Firebase
+      // Upload new file to Supabase Storage
       const fileName = `ppts/${Date.now()}-${req.file.originalname}`;
-      fileData = await uploadFile(req.file, fileName);
+      fileData = await uploadFile(req.file, fileName, req.user);
     }
 
     // Update PPT
@@ -229,7 +232,7 @@ exports.deletePPT = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this PPT' });
     }
 
-    // Delete file from Firebase
+    // Delete file from Supabase
     await deleteFile(ppt.filePath);
 
     // Delete PPT from database

@@ -1,30 +1,36 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuth from '../hooks/useAuth';
 import { LockClosedIcon } from '@heroicons/react/24/solid';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AuthContext from '../context/AuthContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login, loading, clearError } = useAuth();
+  const [errorMessage, setErrorMessage] = useState('');
+  const { login, loading, error } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Clear previous errors
+    setErrorMessage('');
+    
     if (!email || !password) {
-      setError('Please enter both email and password');
+      setErrorMessage('Please enter both email and password');
       return;
     }
     
     try {
-      clearError();
+      console.log('Submitting login with:', email);
+      
       await login(email, password);
+      console.log('Login successful, navigating to dashboard');
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to log in. Please check your credentials.');
+      console.error('Login submission error:', err);
+      setErrorMessage(error || err.response?.data?.message || 'Failed to log in. Please check your credentials.');
     }
   };
 
@@ -38,9 +44,9 @@ export default function Login() {
           </p>
         </div>
         
-        {error && (
+        {errorMessage && (
           <div className="bg-red-900 bg-opacity-20 border border-red-500 text-red-400 px-4 py-3 rounded relative" role="alert">
-            <span className="block sm:inline">{error}</span>
+            <span className="block sm:inline">{errorMessage}</span>
           </div>
         )}
         

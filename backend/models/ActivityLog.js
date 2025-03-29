@@ -4,31 +4,27 @@ const activityLogSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
-  actionType: {
+  type: {
     type: String,
-    enum: ['login', 'ppt_view', 'assignment_view', 'assignment_submit', 'logout'],
-    required: true,
+    enum: ['login', 'logout', 'ppt_view', 'ppt_download', 'assignment_view', 'assignment_download', 'assignment_submit'],
+    required: true
   },
-  resourceId: {
-    type: mongoose.Schema.Types.ObjectId,
-  },
-  resourceType: {
-    type: String,
-    enum: ['ppt', 'assignment', 'submission', null],
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
+  metadata: {
+    type: mongoose.Schema.Types.Mixed
   },
   ipAddress: {
-    type: String,
+    type: String
   },
   userAgent: {
-    type: String,
-  },
+    type: String
+  }
+}, {
+  timestamps: true
 });
 
-const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
-module.exports = ActivityLog;
+// Index for efficient querying
+activityLogSchema.index({ user: 1, type: 1, createdAt: -1 });
+
+module.exports = mongoose.model('ActivityLog', activityLogSchema);

@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
-import useAuth from './hooks/useAuth';
+import { Suspense, lazy, useContext } from 'react';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
+import AuthContext from './context/AuthContext';
 
 // Lazy loaded pages
 const Login = lazy(() => import('./pages/Login'));
@@ -18,8 +18,8 @@ const ProfilePage = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function App() {
-  const { user, loading } = useAuth();
-
+  const { user, loading } = useContext(AuthContext);
+  
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -29,40 +29,25 @@ function App() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
         
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
           <Route index element={<Navigate to="/dashboard" />} />
           
-          <Route
-            path="dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="profile" element={<ProfilePage />} />
           
           {/* Admin Routes */}
-          <Route
-            path="admin/users"
+          <Route 
+            path="admin/users" 
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <UserManagement />
               </ProtectedRoute>
-            }
+            } 
           />
           
           {/* Trainer Routes */}
-          <Route
-            path="trainer/batches"
+          <Route 
+            path="trainer/batches" 
             element={
               <ProtectedRoute allowedRoles={['admin', 'trainer']}>
                 <BatchManagement />
@@ -70,8 +55,8 @@ function App() {
             }
           />
           
-          <Route
-            path="trainer/ppts"
+          <Route 
+            path="trainer/ppts" 
             element={
               <ProtectedRoute allowedRoles={['admin', 'trainer']}>
                 <PPTManagement />
@@ -79,8 +64,8 @@ function App() {
             }
           />
           
-          <Route
-            path="trainer/assignments"
+          <Route 
+            path="trainer/assignments" 
             element={
               <ProtectedRoute allowedRoles={['admin', 'trainer']}>
                 <AssignmentManagement />
@@ -89,23 +74,8 @@ function App() {
           />
           
           {/* Student Routes */}
-          <Route
-            path="ppts"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'trainer', 'student']}>
-                <PPTView />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="assignments"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'trainer', 'student']}>
-                <AssignmentView />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="ppts" element={<PPTView />} />
+          <Route path="assignments" element={<AssignmentView />} />
           
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
