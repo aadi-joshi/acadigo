@@ -7,6 +7,7 @@ import {
   AcademicCapIcon,
   ClipboardDocumentListIcon,
   UserIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import useAuth from '../hooks/useAuth';
 import { Dialog, Transition } from '@headlessui/react';
@@ -22,7 +23,10 @@ const Sidebar = ({ open, setOpen }) => {
 
   // Admin specific routes
   if (user?.role === 'admin') {
-    navigation.push({ name: 'User Management', href: '/admin/users', icon: UserIcon, roles: ['admin'] });
+    navigation.push(
+      { name: 'User Management', href: '/admin/users', icon: UserIcon, roles: ['admin'] },
+      { name: 'Activity Logs', href: '/admin/logs', icon: ClockIcon, roles: ['admin'] }
+    );
   }
 
   // Trainer specific routes

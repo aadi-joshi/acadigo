@@ -12,6 +12,7 @@ import {
   UserGroupIcon,
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
+import ActivityLogs from '../components/common/ActivityLogs';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -116,41 +117,61 @@ function AdminDashboard({ data }) {
         </div>
       </div>
       
-      {/* Recent Users */}
-      <div className="bg-gray-800 rounded-xl shadow mb-8">
-        <div className="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-white">Recent Users</h2>
-          <Link to="/admin/users" className="text-sm text-primary-400 hover:text-primary-300">View All</Link>
-        </div>
-        <div className="divide-y divide-gray-700">
-          {recentUsers && recentUsers.length > 0 ? (
-            recentUsers.map((user) => (
-              <div key={user._id} className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center">
-                      <span className="text-lg font-medium text-white">{user.name.charAt(0)}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Recent Users */}
+        <div className="bg-gray-800 rounded-xl shadow mb-8">
+          <div className="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+            <h2 className="text-lg font-medium text-white">Recent Users</h2>
+            <Link to="/admin/users" className="text-sm text-primary-400 hover:text-primary-300">View All</Link>
+          </div>
+          <div className="divide-y divide-gray-700">
+            {recentUsers && recentUsers.length > 0 ? (
+              recentUsers.map((user) => (
+                <div key={user._id} className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center">
+                        <span className="text-lg font-medium text-white">{user.name.charAt(0)}</span>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-white">{user.name}</p>
+                        <p className="text-xs text-gray-400">{user.email}</p>
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-white">{user.name}</p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
-                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      user.role === 'admin' 
+                        ? 'bg-red-900 bg-opacity-20 text-red-400' 
+                        : user.role === 'trainer' 
+                          ? 'bg-blue-900 bg-opacity-20 text-blue-400'
+                          : 'bg-green-900 bg-opacity-20 text-green-400'
+                    }`}>
+                      {user.role}
+                    </span>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    user.role === 'admin' 
-                      ? 'bg-red-900 bg-opacity-20 text-red-400' 
-                      : user.role === 'trainer' 
-                        ? 'bg-blue-900 bg-opacity-20 text-blue-400'
-                        : 'bg-green-900 bg-opacity-20 text-green-400'
-                  }`}>
-                    {user.role}
-                  </span>
                 </div>
-              </div>
-            ))
-          ) : (
-            <div className="px-6 py-4 text-gray-400">No recent users found.</div>
-          )}
+              ))
+            ) : (
+              <div className="px-6 py-4 text-gray-400">No recent users found.</div>
+            )}
+          </div>
+        </div>
+        
+        {/* Activity Logs */}
+        <div className="bg-gray-800 rounded-xl shadow">
+          <div className="px-6 py-4 border-b border-gray-700">
+            <h2 className="text-lg font-medium text-white">Recent Activity</h2>
+          </div>
+          <div className="p-4">
+            <ActivityLogs limit={5} />
+            <div className="mt-4 flex justify-center">
+              <Link 
+                to="/admin/logs" 
+                className="text-sm text-primary-400 hover:text-primary-300"
+              >
+                View All Activity
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -328,6 +349,16 @@ function TrainerDashboard({ data }) {
           ) : (
             <div className="px-6 py-4 text-gray-400">No pending submissions to review.</div>
           )}
+        </div>
+      </div>
+      
+      {/* Student Activity */}
+      <div className="bg-gray-800 rounded-xl shadow mt-8">
+        <div className="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+          <h2 className="text-lg font-medium text-white">Recent Student Activity</h2>
+        </div>
+        <div className="p-4">
+          <ActivityLogs limit={5} />
         </div>
       </div>
     </div>

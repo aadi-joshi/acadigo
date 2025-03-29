@@ -6,32 +6,27 @@
   color-scheme: dark;
 }
 
-html, body {
-  height: 100%;
-  overflow-x: hidden;
-  background-color: rgb(17, 24, 39); /* bg-gray-900 */
-  color: #fff;
-}
-
-body {
-  @apply bg-gray-900 text-gray-200;
-  min-height: 100vh;
-}
-
-#root {
-  height: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+@layer base {
+  html {
+    @apply h-full bg-gray-900;
+  }
+  
+  body {
+    @apply h-full text-gray-200;
+  }
+  
+  #root {
+    @apply h-full;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex justify-center rounded-md px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50;
   }
   
   .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex justify-center rounded-md px-4 py-2 text-sm font-medium text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50;
   }
   
   .btn-danger {
@@ -43,17 +38,17 @@ body {
   }
   
   .input {
-    @apply bg-gray-700 text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500;
+    @apply mt-1 block w-full rounded-md border-gray-700 shadow-sm bg-gray-700 text-white focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
   }
-
+  
   .select {
-    @apply bg-gray-700 text-white rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500;
+    @apply mt-1 block w-full rounded-md border-gray-700 shadow-sm bg-gray-700 text-white focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
   }
-
+  
   .label {
-    @apply block text-sm font-medium text-gray-300 mb-1;
+    @apply block text-sm font-medium text-gray-300;
   }
-
+  
   .input-field {
     @apply appearance-none bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500;
   }

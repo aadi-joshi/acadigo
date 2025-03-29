@@ -1,28 +1,5 @@
 const mongoose = require('mongoose');
 
-const submissionFileSchema = new mongoose.Schema({
-  fileName: {
-    type: String,
-    required: true
-  },
-  fileUrl: {
-    type: String,
-    required: true
-  },
-  filePath: {
-    type: String,
-    required: true
-  },
-  fileSize: {
-    type: Number,
-    required: true
-  },
-  uploadedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
 const submissionSchema = new mongoose.Schema({
   assignment: {
     type: mongoose.Schema.Types.ObjectId,
@@ -34,21 +11,43 @@ const submissionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  files: [submissionFileSchema],
+  files: [{
+    fileUrl: {
+      type: String,
+      required: true
+    },
+    filePath: {
+      type: String,
+      required: true
+    },
+    fileName: {
+      type: String,
+      required: true
+    },
+    fileSize: {
+      type: Number,
+      required: true
+    }
+  }],
   submittedAt: {
     type: Date,
     default: Date.now
   },
+  isLate: {
+    type: Boolean,
+    default: false
+  },
   status: {
     type: String,
-    enum: ['submitted', 'graded', 'late'],
+    enum: ['submitted', 'graded'],
     default: 'submitted'
   },
   marks: {
     type: Number
   },
   feedback: {
-    type: String
+    type: String,
+    trim: true
   },
   gradedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -56,17 +55,11 @@ const submissionSchema = new mongoose.Schema({
   },
   gradedAt: {
     type: Date
-  },
-  isLate: {
-    type: Boolean,
-    default: false
   }
 }, {
   timestamps: true
 });
 
-// Create a compound index to ensure a student can submit only one assignment (latest will be kept)
-submissionSchema.index({ assignment: 1, student: 1 });
-
 const Submission = mongoose.model('Submission', submissionSchema);
+
 module.exports = Submission;

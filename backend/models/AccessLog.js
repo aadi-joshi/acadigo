@@ -6,19 +6,21 @@ const accessLogSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  resourceType: {
-    type: String,
-    enum: ['ppt', 'assignment'],
-    required: true
-  },
-  resourceId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    refPath: 'resourceType'
+  resource: {
+    type: {
+      type: String,
+      enum: ['ppt', 'assignment'],
+      required: true
+    },
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      refPath: 'resource.type'
+    }
   },
   action: {
     type: String,
-    enum: ['view', 'download', 'submit'],
+    enum: ['view', 'download', 'submit', 'grade'],
     required: true
   },
   timestamp: {
@@ -31,12 +33,10 @@ const accessLogSchema = new mongoose.Schema({
   userAgent: {
     type: String
   }
+}, {
+  timestamps: true
 });
 
-// Index for faster queries by user
-accessLogSchema.index({ user: 1, timestamp: -1 });
-// Index for faster queries by resource 
-accessLogSchema.index({ resourceType: 1, resourceId: 1, timestamp: -1 });
-
 const AccessLog = mongoose.model('AccessLog', accessLogSchema);
+
 module.exports = AccessLog;

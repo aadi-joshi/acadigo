@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import useAuth from '../../hooks/useAuth';
 import { format } from 'date-fns';
 
 const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
   const { user } = useAuth();
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   
   const {
     register,
@@ -42,7 +42,7 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
   
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      setSelectedFiles(Array.from(e.target.files));
     }
   };
   
@@ -56,10 +56,10 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
     formData.append('maxScore', data.maxScore);
     formData.append('uploadedBy', user._id);
     
-    // Only append file if a new one was selected or if creating a new assignment
-    if (selectedFile) {
-      formData.append('file', selectedFile);
-    }
+    // Append all selected files
+    selectedFiles.forEach((file) => {
+      formData.append('files', file);
+    });
     
     onSubmit(formData);
   };
@@ -179,24 +179,29 @@ const AssignmentForm = ({ assignment, batches, onSubmit, onCancel }) => {
             </div>
             
             <div className="mb-4">
-              <label htmlFor="file" className="label">
-                Assignment File {assignment && <span className="text-gray-400 text-xs">(Leave empty to keep current file)</span>}
+              <label htmlFor="files" className="label">
+                Assignment Files {assignment && <span className="text-gray-400 text-xs">(Leave empty to keep current files)</span>}
               </label>
               <input
-                id="file"
+                id="files"
                 type="file"
                 className="input w-full"
-                accept=".doc,.docx,.pdf,.zip,.rar"
                 onChange={handleFileChange}
-                {...register('file', { required: !assignment })}
+                multiple
               />
-              {errors.file && (
-                <p className="mt-1 text-sm text-red-500">{errors.file.message}</p>
-              )}
-              {assignment && (
-                <p className="text-sm text-gray-400 mt-1">
-                  Current file: {assignment.fileName}
-                </p>
+              
+              {selectedFiles.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-400">Selected files:</p>
+                  <ul className="mt-1 text-sm text-gray-300">
+                    {selectedFiles.map((file, index) => (
+                      <li key={index} className="flex items-center">
+                        <DocumentTextIcon className="h-4 w-4 mr-2 text-primary-400" />
+                        {file.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
             

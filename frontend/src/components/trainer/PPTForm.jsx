@@ -13,12 +13,12 @@ const PPTForm = ({ ppt, batches, onSubmit, onCancel }) => {
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
   } = useForm({
     defaultValues: {
       title: ppt?.title || '',
       description: ppt?.description || '',
       batch: ppt?.batch || '',
+      isPublic: ppt?.isPublic ?? false,
     },
   });
   
@@ -28,6 +28,7 @@ const PPTForm = ({ ppt, batches, onSubmit, onCancel }) => {
         title: ppt.title,
         description: ppt.description,
         batch: ppt.batch,
+        isPublic: ppt.isPublic,
       });
     }
   }, [ppt, reset]);
@@ -43,9 +44,8 @@ const PPTForm = ({ ppt, batches, onSubmit, onCancel }) => {
     formData.append('title', data.title);
     formData.append('description', data.description);
     formData.append('batch', data.batch);
-    formData.append('uploadedBy', user._id);
+    formData.append('isPublic', data.isPublic);
     
-    // Only append file if a new one was selected or if creating a new PPT
     if (selectedFile) {
       formData.append('file', selectedFile);
     }
@@ -122,24 +122,30 @@ const PPTForm = ({ ppt, batches, onSubmit, onCancel }) => {
             
             <div className="mb-4">
               <label htmlFor="file" className="label">
-                PPT File {ppt && <span className="text-gray-400 text-xs">(Leave empty to keep current file)</span>}
+                PPT File {ppt && '(Leave empty to keep current file)'}
               </label>
               <input
                 id="file"
                 type="file"
                 className="input w-full"
-                accept=".ppt,.pptx,.pdf"
                 onChange={handleFileChange}
-                {...register('file', { required: !ppt })}
+                accept=".ppt,.pptx,.pdf"
+                {...(!ppt && register('file', { required: 'File is required' }))}
               />
               {errors.file && (
                 <p className="mt-1 text-sm text-red-500">{errors.file.message}</p>
               )}
-              {ppt && (
-                <p className="text-sm text-gray-400 mt-1">
-                  Current file: {ppt.fileName}
-                </p>
-              )}
+            </div>
+            
+            <div className="mb-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  className="form-checkbox h-5 w-5 text-primary-600 rounded border-gray-700 bg-gray-700 focus:ring-primary-500"
+                  {...register('isPublic')}
+                />
+                <span className="ml-2">Make available to all batches</span>
+              </label>
             </div>
             
             <div className="flex justify-end mt-6 space-x-3">

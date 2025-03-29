@@ -16,6 +16,7 @@ const PPTView = lazy(() => import('./pages/student/PPTView'));
 const AssignmentView = lazy(() => import('./pages/student/AssignmentView'));
 const ProfilePage = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const ActivityLogsPage = lazy(() => import('./pages/admin/ActivityLogsPage'));
 
 function App() {
   const { user, loading } = useAuth();
@@ -56,6 +57,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <UserManagement />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="admin/logs"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ActivityLogsPage />
               </ProtectedRoute>
             }
           />

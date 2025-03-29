@@ -1,7 +1,12 @@
 import api from './api';
 
-export const getPPTs = async (batchId) => {
-  const response = await api.get('/ppts', { params: { batchId } });
+export const getPPTs = async () => {
+  const response = await api.get('/ppts');
+  return response.data;
+};
+
+export const getAvailablePPTs = async () => {
+  const response = await api.get('/ppts/available');
   return response.data;
 };
 
@@ -10,7 +15,7 @@ export const getPPT = async (id) => {
   return response.data;
 };
 
-export const uploadPPT = async (formData) => {
+export const createPPT = async (formData) => {
   const response = await api.post('/ppts', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -19,17 +24,16 @@ export const uploadPPT = async (formData) => {
   return response.data;
 };
 
-export const updatePPT = async (id, pptData) => {
-  const response = await api.put(`/ppts/${id}`, pptData);
+export const updatePPT = async (id, formData) => {
+  const response = await api.put(`/ppts/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 
 export const deletePPT = async (id) => {
   const response = await api.delete(`/ppts/${id}`);
-  return response.data;
-};
-
-export const logPPTView = async (pptId) => {
-  const response = await api.post(`/ppts/${pptId}/view`);
   return response.data;
 };

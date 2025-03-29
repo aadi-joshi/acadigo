@@ -10,18 +10,6 @@ const assignmentSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  fileUrl: {
-    type: String
-  },
-  filePath: {
-    type: String
-  },
-  fileName: {
-    type: String
-  },
-  fileSize: {
-    type: Number
-  },
   batch: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Batch',
@@ -31,19 +19,33 @@ const assignmentSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  maxMarks: {
-    type: Number,
-    required: true
-  },
-  allowResubmission: {
-    type: Boolean,
-    default: true
-  },
-  uploadedBy: {
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  maxMarks: {
+    type: Number,
+    default: 100
+  },
+  attachments: [{
+    fileUrl: {
+      type: String,
+      required: true
+    },
+    filePath: {
+      type: String,
+      required: true
+    },
+    fileName: {
+      type: String,
+      required: true
+    },
+    fileSize: {
+      type: Number,
+      required: true
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -57,4 +59,5 @@ const assignmentSchema = new mongoose.Schema({
 });
 
 const Assignment = mongoose.model('Assignment', assignmentSchema);
+
 module.exports = Assignment;
