@@ -2,17 +2,61 @@ import axios from 'axios';
 
 // Helper function to ensure baseURL has the correct format
 const formatBaseUrl = (url) => {
-  // If it's a complete URL (has protocol)
-  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-    // Make sure it ends with /api
-    return url.endsWith('/api') ? url : `${url}/api`.replace(/\/+/g, '/').replace(/\/api\/api/g, '/api');
+  if (!url) {
+    return 'http://localhost:5000/api';
   }
+  
+  // Fix malformed URLs (missing double slash after protocol)
+  if (url.startsWith('http:/') && !url.startsWith('http://')) {
+    url = url.replace('http:/', 'http://');
+  }
+  if (url.startsWith('https:/') && !url.startsWith('https://')) {
+    url = url.replace('https:/', 'https://');
+  }
+
+  // If it's a complete URL (has protocol)
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Make sure it ends with /api
+    if (url.endsWith('/api')) {
+      return url;
+    } else if (url.endsWith('/')) {
+      return `${url}api`;
+    } else {
+      return `${url}/api`;
+    }
+  }
+  
   // Default localhost URL with /api
   return 'http://localhost:5000/api';
 };
 
+// Helper function to determine the appropriate base URL based on environment
+const getBaseUrl = () => {
+  // The current hostname (e.g., localhost, mysite.com)
+  const hostname = window.location.hostname;
+  
+  // If running locally, use local backend
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    console.log('Running in local development - using local API server');
+    return 'http://localhost:5000/api';
+  }
+  
+  // If running on the deployed site, use the configured API URL
+  const configuredUrl = import.meta.env.VITE_API_URL;
+  if (configuredUrl) {
+    return formatBaseUrl(configuredUrl);
+  }
+  
+  // Fallback to local API if nothing else is specified
+  return 'http://localhost:5000/api';
+};
+
+// Get the appropriate API URL based on environment
+const apiUrl = getBaseUrl();
+console.log('Using API URL:', apiUrl);
+
 const api = axios.create({
-  baseURL: formatBaseUrl(import.meta.env.VITE_API_URL),
+  baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json'
   }

@@ -35,6 +35,31 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       console.log('Attempting login with API URL:', api.defaults.baseURL);
+      
+      // Try a simple request to check API connectivity
+      try {
+        await api.get('/auth/test', { timeout: 5000 })
+          .catch(err => {
+            if (err.message === 'Network Error' || err.code === 'ECONNABORTED') {
+              // Provide more specific error info based on environment
+              const hostname = window.location.hostname;
+              const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1';
+              
+              if (isLocalDev) {
+                throw new Error(`Cannot connect to API server at ${api.defaults.baseURL}. Make sure your backend server is running at http://localhost:5000`);
+              } else {
+                throw new Error(`Cannot connect to API server at ${api.defaults.baseURL}. Please check your network connection and server status.`);
+              }
+            }
+            // If it's not a network error, continue with login
+          });
+      } catch (pingError) {
+        console.error('API connectivity test failed:', pingError);
+        setError(pingError.message);
+        throw pingError;
+      }
+      
+      // Proceed with login if API is reachable
       const response = await api.post('/auth/login', { email, password });
       
       const { token, user } = response.data;
@@ -47,7 +72,10 @@ export const AuthProvider = ({ children }) => {
       return user;
     } catch (error) {
       console.error('Login error:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to login. Please check your credentials.';
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to login. Please check your credentials.';
       setError(errorMessage);
       throw error;
     }
