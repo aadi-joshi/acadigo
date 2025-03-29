@@ -4,16 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './hooks/useAuth';
 import './index.css';
-import axios from 'axios';
+import { setupMockAPI } from './utils/mockApi';
 
-// Set default axios base URL
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-// Add auth token from localStorage to requests
-const token = localStorage.getItem('token');
-if (token) {
-  axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-}
+// Setup mock API for demo purposes
+setupMockAPI();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

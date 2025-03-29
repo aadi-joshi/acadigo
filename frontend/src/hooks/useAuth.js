@@ -15,11 +15,12 @@ export const AuthProvider = ({ children }) => {
     const checkAuthStatus = () => {
       try {
         const storedUser = localStorage.getItem('mockUser');
+        
         if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
       } catch (err) {
-        console.error('Auth check failed:', err);
+        console.error("Auth check failed:", err);
       } finally {
         setLoading(false);
       }
@@ -32,23 +33,23 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
-
+      
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       // Find user in mock data
-      const foundUser = users.find((u) => u.email === email);
-
+      const foundUser = users.find(u => u.email === email);
+      
       if (!foundUser || foundUser.password !== password) {
         throw new Error('Invalid credentials');
       }
-
+      
       // Remove password from user object
       const { password: _, ...userWithoutPassword } = foundUser;
-
+      
       // Store user in localStorage
       localStorage.setItem('mockUser', JSON.stringify(userWithoutPassword));
-
+      
       setUser(userWithoutPassword);
       setError(null);
       return userWithoutPassword;
@@ -63,8 +64,8 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     // Clear storage and state
     localStorage.removeItem('mockUser');
     setUser(null);
@@ -74,25 +75,25 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-
+      
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       // Check if email is already used
-      if (users.some((u) => u.email === userData.email)) {
+      if (users.some(u => u.email === userData.email)) {
         throw new Error('Email already in use');
       }
-
+      
       // In a real app, this would add to the database
       const newUser = {
         _id: `user${users.length + 1}`,
         ...userData,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
-
+      
       // Add to mock users (this won't persist on refresh)
       users.push(newUser);
-
+      
       return newUser;
     } catch (err) {
       setError(err.message || 'Registration failed');
@@ -106,20 +107,20 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (userData) => {
     try {
       setLoading(true);
-
+      
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
       if (!user) {
         throw new Error('User not authenticated');
       }
-
+      
       // Update user data
       const updatedUser = { ...user, ...userData };
-
+      
       // Store updated user in localStorage
       localStorage.setItem('mockUser', JSON.stringify(updatedUser));
-
+      
       setUser(updatedUser);
       return updatedUser;
     } catch (err) {
@@ -143,7 +144,7 @@ export const AuthProvider = ({ children }) => {
     register,
     updateProfile,
     clearError,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

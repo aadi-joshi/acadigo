@@ -27,7 +27,8 @@ export default {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/line-clamp'),
+    // Comment out these plugins until you run npm install
+    // require('@tailwindcss/forms'),
+    // require('@tailwindcss/line-clamp'),
   ],
 }
