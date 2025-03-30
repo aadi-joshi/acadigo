@@ -115,8 +115,8 @@ graph TD
 ![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-- **Frontend**: React, Vite, Tailwind CSS, Headless UI, React Router
-- **Backend**: Node.js, Express, JWT Authentication
+- **Frontend**: React, Vite, Tailwind CSS
+- **Backend**: Node.js, Express, JWT Authentication, Bcrypt.js
 - **Database**: MongoDB with Mongoose
 - **Storage**: Supabase Storage for files
 - **Email**: Nodemailer for notifications
