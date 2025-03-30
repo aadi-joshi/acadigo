@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { UserCircleIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import api from '../../services/api'; // Import the API service instead of axios
+import { UserCircleIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import api from '../../services/api';
 import UserForm from '../../components/admin/UserForm';
 import { toast } from 'react-toastify';
 
@@ -11,7 +11,13 @@ export default function UserManagement() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [batches, setBatches] = useState([]);
+  
+  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [batchFilter, setBatchFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Fetch users and batches on component mount
   useEffect(() => {
@@ -19,11 +25,9 @@ export default function UserManagement() {
       try {
         setLoading(true);
         
-        // Use api service instead of axios
         const usersResponse = await api.get('/users');
         setUsers(usersResponse.data);
         
-        // Use api service instead of axios
         const batchesResponse = await api.get('/batches');
         setBatches(batchesResponse.data);
         
@@ -38,11 +42,36 @@ export default function UserManagement() {
     fetchData();
   }, []);
 
-  // Filter users based on search term
+  // Enhanced filtering logic with multiple criteria
   const filteredUsers = users.filter(user => {
     const searchFields = `${user.name} ${user.email} ${user.role}`.toLowerCase();
-    return searchFields.includes(searchTerm.toLowerCase());
+    const matchesSearch = searchTerm === '' || searchFields.includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    
+    const matchesBatch = batchFilter === 'all' || 
+      (batchFilter === 'none' && (!user.batch)) ||
+      (user.batch && user.batch._id === batchFilter);
+    
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && user.active !== false) || 
+      (statusFilter === 'inactive' && user.active === false);
+    
+    return matchesSearch && matchesRole && matchesBatch && matchesStatus;
   });
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setRoleFilter('all');
+    setBatchFilter('all');
+    setStatusFilter('all');
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = () => {
+    return searchTerm !== '' || roleFilter !== 'all' || batchFilter !== 'all' || statusFilter !== 'all';
+  };
 
   const handleCreateUser = () => {
     setCurrentUser(null);
@@ -57,7 +86,6 @@ export default function UserManagement() {
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        // Use api service instead of axios
         await api.delete(`/users/${userId}`);
         setUsers(users.filter(user => user._id !== userId));
         toast.success('User deleted successfully');
@@ -70,17 +98,12 @@ export default function UserManagement() {
 
   const handleFormSubmit = async (userData) => {
     try {
-      console.log('Submitting user data:', userData);
-      
       if (currentUser) {
-        // Update existing user - use api service
         const response = await api.put(`/users/${currentUser._id}`, userData);
         setUsers(users.map(user => user._id === currentUser._id ? response.data : user));
         toast.success('User updated successfully');
       } else {
-        // Create new user - use api service
         const response = await api.post('/users', userData);
-        console.log('Create user response:', response.data);
         setUsers([response.data, ...users]);
         toast.success('User created successfully');
       }
@@ -123,14 +146,109 @@ export default function UserManagement() {
         </div>
       )}
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search users..."
-          className="input w-full max-w-md"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+        <div className="relative w-full md:w-96">
+          <input
+            type="text"
+            placeholder="Search users..."
+            className="input w-full pr-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+        
+        <button 
+          onClick={() => setShowFilters(!showFilters)}
+          className={`btn-secondary flex items-center ${showFilters ? 'bg-gray-700' : ''}`}
+        >
+          <FunnelIcon className="h-5 w-5 mr-2" />
+          {hasActiveFilters() ? `Filters (${
+            (searchTerm ? 1 : 0) + 
+            (roleFilter !== 'all' ? 1 : 0) + 
+            (batchFilter !== 'all' ? 1 : 0) + 
+            (statusFilter !== 'all' ? 1 : 0)
+          })` : 'Filters'}
+        </button>
+      </div>
+
+      {showFilters && (
+        <div className="bg-gray-800 p-4 rounded-lg mb-6 shadow">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-medium text-white">Filter Users</h3>
+            {hasActiveFilters() && (
+              <button 
+                onClick={clearFilters}
+                className="text-sm text-gray-400 hover:text-white flex items-center"
+              >
+                <XMarkIcon className="h-4 w-4 mr-1" />
+                Clear all filters
+              </button>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="roleFilter" className="block text-xs text-gray-400 mb-1">Role</label>
+              <select
+                id="roleFilter"
+                className="select w-full"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+              >
+                <option value="all">All Roles</option>
+                <option value="trainer">Trainer</option>
+                <option value="student">Student</option>
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="batchFilter" className="block text-xs text-gray-400 mb-1">Batch</label>
+              <select
+                id="batchFilter"
+                className="select w-full"
+                value={batchFilter}
+                onChange={(e) => setBatchFilter(e.target.value)}
+              >
+                <option value="all">All Batches</option>
+                <option value="none">No Batch</option>
+                {batches.map(batch => (
+                  <option key={batch._id} value={batch._id}>
+                    {batch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="statusFilter" className="block text-xs text-gray-400 mb-1">Status</label>
+              <select
+                id="statusFilter"
+                className="select w-full"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="text-sm text-gray-400 mb-4 flex justify-between items-center">
+        <div>
+          Found {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'}
+          {hasActiveFilters() && ' matching filters'}
+        </div>
       </div>
 
       <div className="bg-gray-800 shadow overflow-hidden rounded-lg">
@@ -145,6 +263,9 @@ export default function UserManagement() {
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                 Batch
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                Status
               </th>
               <th scope="col" className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
@@ -184,6 +305,15 @@ export default function UserManagement() {
                       <span className="text-gray-500">N/A</span>
                     )}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      user.active !== false
+                        ? 'bg-green-900 bg-opacity-20 text-green-400'
+                        : 'bg-gray-700 bg-opacity-40 text-gray-400'
+                    }`}>
+                      {user.active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEditUser(user)}
@@ -204,8 +334,8 @@ export default function UserManagement() {
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="px-6 py-4 text-center text-gray-400">
-                  No users found
+                <td colSpan="5" className="px-6 py-4 text-center text-gray-400">
+                  No users found matching your filters
                 </td>
               </tr>
             )}

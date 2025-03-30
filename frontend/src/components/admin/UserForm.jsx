@@ -194,9 +194,9 @@ const UserForm = ({ isOpen, onClose, onSubmit, user, batches = [] }) => {
                 {...register('role', { required: 'Role is required' })}
                 onChange={handleRoleChange}
               >
-                <option value="student">Student</option>
+                {/* Admin role is now restricted */}
                 <option value="trainer">Trainer</option>
-                <option value="admin">Admin</option>
+                <option value="student">Student</option>
               </select>
               {errors.role && (
                 <p className="mt-1 text-sm text-red-500">{errors.role.message}</p>

@@ -82,35 +82,31 @@ exports.createUser = async (req, res) => {
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
-
+    
+    // Prevent creating admin users regardless of the role value sent
+    const userRole = role === 'admin' ? 'trainer' : role;
+    
     // Check if student role has a batch
-    if (role === 'student' && !batch) {
+    if (userRole === 'student' && !batch) {
       return res.status(400).json({ message: 'Students must be assigned to a batch' });
     }
 
-    // Check if batch exists for student
-    if (role === 'student') {
-      const batchExists = await Batch.findById(batch);
-      if (!batchExists) {
-        return res.status(400).json({ message: 'Batch not found' });
-      }
-    }
-
-    // Check if user with email already exists
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
-
+    
     // Create user
     const user = await User.create({
       name,
       email,
       password,
-      role,
-      batch: role === 'student' ? batch : undefined
+      role: userRole,
+      batch: userRole === 'student' ? batch : undefined
     });
-
+    
+    // Send success response - don't include password
     res.status(201).json({
       success: true,
       user: {
@@ -163,16 +159,19 @@ exports.updateUser = async (req, res) => {
         { new: true, runValidators: true }
       );
     } else {
-      // Admin can update all fields
+      // Admin can update all fields except changing role to admin
       const { name, email, role, batch, active } = req.body;
       
+      // Prevent changing role to admin (unless user is already admin)
+      const userRole = role === 'admin' ? (user.role === 'admin' ? 'admin' : 'trainer') : role;
+      
       // Check if student role has a batch
-      if (role === 'student' && !batch) {
+      if (userRole === 'student' && !batch) {
         return res.status(400).json({ message: 'Students must be assigned to a batch' });
       }
 
       // If changing batch, check if it exists
-      if (role === 'student' && batch) {
+      if (userRole === 'student' && batch) {
         const batchExists = await Batch.findById(batch);
         if (!batchExists) {
           return res.status(400).json({ message: 'Batch not found' });
@@ -184,8 +183,8 @@ exports.updateUser = async (req, res) => {
         {
           name,
           email,
-          role,
-          batch: role === 'student' ? batch : undefined,
+          role: userRole,
+          batch: userRole === 'student' ? batch : undefined,
           active
         },
         { new: true, runValidators: true }
