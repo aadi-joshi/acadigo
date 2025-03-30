@@ -120,7 +120,7 @@ graph TD
 - **Database**: MongoDB with Mongoose
 - **Storage**: Supabase Storage for files
 - **Email**: Nodemailer for notifications
-- **Deployment**: Ready for Vercel, Railway, or any modern hosting platform
+- **Deployment**: Hosted both /frontend and /backend on Railway
 
 ## Project Structure
 
