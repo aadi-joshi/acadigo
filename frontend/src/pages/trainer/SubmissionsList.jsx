@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
@@ -9,7 +9,9 @@ import {
   CheckIcon,
   ClockIcon,
   XMarkIcon,
-  PaperAirplaneIcon
+  PaperAirplaneIcon,
+  PhotoIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { getSubmissions, gradeSubmission } from '../../services/assignmentService';
@@ -33,6 +35,9 @@ export default function SubmissionsList() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingGrade, setLoadingGrade] = useState(false);
+  const [feedbackImage, setFeedbackImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchAssignmentAndSubmissions = async () => {
@@ -64,7 +69,31 @@ export default function SubmissionsList() {
     setSelectedSubmission(submission);
     setScore(submission.marks || '');
     setFeedback(submission.feedback || '');
+    setFeedbackImage(null);
+    setImagePreview(submission.feedbackImage?.fileUrl || null);
     setIsGradingModalOpen(true);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFeedbackImage(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setFeedbackImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleGradeSubmit = async (e) => {
@@ -80,7 +109,8 @@ export default function SubmissionsList() {
       // Make sure we're formatting the data correctly
       const updatedSubmission = await gradeSubmission(selectedSubmission._id, { 
         score: parseInt(score), // Make sure score is sent as a number
-        feedback 
+        feedback,
+        feedbackImage
       });
       
       // Update the submissions state
@@ -337,6 +367,54 @@ export default function SubmissionsList() {
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                 ></textarea>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Feedback Image (Optional)
+                </label>
+                
+                {imagePreview ? (
+                  <div className="mt-2 relative">
+                    <img 
+                      src={imagePreview} 
+                      alt="Feedback preview" 
+                      className="max-h-64 rounded-md mx-auto border border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 bg-gray-900 bg-opacity-70 rounded-full p-1 text-white hover:bg-red-500"
+                    >
+                      <XCircleIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md cursor-pointer hover:border-gray-500"
+                    onClick={() => fileInputRef.current.click()}
+                  >
+                    <div className="space-y-1 text-center">
+                      <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="flex text-sm text-gray-400">
+                        <label className="relative cursor-pointer rounded-md font-medium text-primary-400 hover:text-primary-300">
+                          <span>Upload an image</span>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="sr-only"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 5MB
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end">

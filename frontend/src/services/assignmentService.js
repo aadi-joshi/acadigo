@@ -83,9 +83,24 @@ export const getSubmissions = async (assignmentId) => {
   }
 };
 
-export const gradeSubmission = async (submissionId, gradeData) => {
+export const gradeSubmission = async (submissionId, { score, feedback, feedbackImage }) => {
   try {
-    const response = await api.put(`/submissions/${submissionId}/grade`, gradeData);
+    const formData = new FormData();
+    formData.append('score', score);
+    
+    if (feedback) {
+      formData.append('feedback', feedback);
+    }
+    
+    if (feedbackImage) {
+      formData.append('feedbackImage', feedbackImage);
+    }
+    
+    const response = await api.put(`/submissions/${submissionId}/grade`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error grading submission:', error);

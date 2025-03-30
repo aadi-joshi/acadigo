@@ -372,9 +372,24 @@ export default function AssignmentView() {
                         </div>
                         
                         {submissions[selectedAssignment._id].feedback && (
-                          <div>
+                          <div className="mb-3">
                             <span className="text-gray-300">Feedback:</span>
                             <p className="mt-1 text-white whitespace-pre-wrap">{submissions[selectedAssignment._id].feedback}</p>
+                          </div>
+                        )}
+                        
+                        {submissions[selectedAssignment._id].feedbackImage && (
+                          <div className="mt-3">
+                            <span className="text-gray-300">Feedback Image:</span>
+                            <div className="mt-2 bg-gray-900 p-2 rounded">
+                              <img 
+                                src={submissions[selectedAssignment._id].feedbackImage.fileUrl} 
+                                alt="Feedback" 
+                                className="max-h-64 rounded mx-auto"
+                                onClick={() => window.open(submissions[selectedAssignment._id].feedbackImage.fileUrl, '_blank')}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>

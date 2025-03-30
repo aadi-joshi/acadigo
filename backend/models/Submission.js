@@ -50,6 +50,13 @@ const submissionSchema = new mongoose.Schema({
   feedback: {
     type: String
   },
+  feedbackImage: {
+    fileName: String,
+    fileUrl: String,
+    filePath: String,
+    fileSize: Number,
+    uploadedAt: Date
+  },
   gradedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

@@ -1,6 +1,7 @@
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
 const User = require('../models/User');
+const { uploadFile, deleteFile } = require('../utils/supabase');
 const { sendEmail } = require('../utils/emailService');
 
 // @desc    Get submissions for the logged-in student
@@ -65,9 +66,44 @@ exports.gradeSubmission = async (req, res) => {
       }
     }
     
+    // Handle feedback image if provided
+    let feedbackImage = submission.feedbackImage;
+    if (req.file) {
+      // Delete old feedback image if exists
+      if (submission.feedbackImage && submission.feedbackImage.filePath) {
+        try {
+          await deleteFile(submission.feedbackImage.filePath);
+        } catch (err) {
+          console.error('Error deleting old feedback image:', err);
+          // Continue with upload even if delete fails
+        }
+      }
+      
+      // Upload new feedback image
+      try {
+        const fileData = await uploadFile(
+          req.file,
+          `feedback/${submission.assignment._id}/${submission.student._id}/${Date.now()}-${req.file.originalname}`,
+          req.user
+        );
+        
+        feedbackImage = {
+          fileName: fileData.fileName,
+          fileUrl: fileData.fileUrl,
+          filePath: fileData.filePath,
+          fileSize: fileData.fileSize,
+          uploadedAt: new Date()
+        };
+      } catch (err) {
+        console.error('Error uploading feedback image:', err);
+        return res.status(500).json({ message: 'Error uploading feedback image' });
+      }
+    }
+    
     // Update submission with grade
     submission.marks = score;
     submission.feedback = feedback || '';
+    submission.feedbackImage = feedbackImage;
     submission.status = 'graded';
     submission.gradedBy = req.user._id;
     submission.gradedAt = new Date();

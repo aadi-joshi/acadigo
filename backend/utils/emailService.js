@@ -108,6 +108,7 @@ const templates = {
         <h3 style="margin-top: 0;">Assignment: ${data.submission?.assignment?.title || 'Assignment'}</h3>
         <p><strong>Score:</strong> ${data.submission?.marks || '0'}/${data.submission?.assignment?.maxMarks || '100'}</p>
         ${data.submission?.feedback ? `<p><strong>Feedback:</strong> ${data.submission.feedback}</p>` : ''}
+        ${data.submission?.feedbackImage?.fileUrl ? `<p><strong>Feedback Image:</strong> <a href="${data.submission.feedbackImage.fileUrl}" target="_blank">View Image</a></p>` : ''}
       </div>
       <p>You can view the details from your dashboard.</p>
       <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/assignments" style="display: inline-block; background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px;">View Assignment</a>
