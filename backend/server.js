@@ -9,6 +9,9 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const { authLimiter } = require('./middleware/rateLimitMiddleware');
+// Add Swagger imports
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocs = require('./swagger');
 
 // Connect to database
 connectDB();
@@ -22,7 +25,7 @@ const assignmentRoutes = require('./routes/assignmentRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const logRoutes = require('./routes/logRoutes');
-const debugRoutes = require('./routes/debugRoutes'); // Import debug routes
+const debugRoutes = require('./routes/debugRoutes');
 
 const app = express();
 
@@ -48,6 +51,9 @@ const apiLimiter = rateLimit({
 app.use('/api/auth', authLimiter);
 app.use('/api', apiLimiter);
 
+// Add Swagger UI at the /api-docs route
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, { explorer: true }));
+
 // Add this debug endpoint
 app.get('/api/test-db', async (req, res) => {
   try {
@@ -68,10 +74,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/ppts', pptRoutes);
 app.use('/api/assignments', assignmentRoutes);
-app.use('/api/submissions', submissionRoutes); // Make sure this line exists
+app.use('/api/submissions', submissionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/logs', logRoutes);
-app.use('/api/debug', debugRoutes); // Add this line to mount debug routes
+app.use('/api/debug', debugRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
