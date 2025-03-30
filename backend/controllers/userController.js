@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const Batch = require('../models/Batch');
+const { uploadFile, deleteFile } = require('../utils/supabase');
+const multer = require('multer');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -229,10 +231,13 @@ exports.deleteUser = async (req, res) => {
 // @access  Private
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, currentPassword, newPassword } = req.body;
+    const { name, currentPassword, newPassword, parentName, contactNumber, parentContactNumber } = req.body;
     const updateFields = {};
     
     if (name) updateFields.name = name;
+    if (parentName) updateFields.parentName = parentName;
+    if (contactNumber) updateFields.contactNumber = contactNumber;
+    if (parentContactNumber) updateFields.parentContactNumber = parentContactNumber;
     
     // If updating password, verify current password
     if (currentPassword && newPassword) {
@@ -250,6 +255,57 @@ exports.updateProfile = async (req, res) => {
       }
       
       updateFields.password = newPassword;
+    }
+    
+    // Handle file uploads if they exist
+    if (req.files) {
+      const user = await User.findById(req.user._id);
+      
+      // Handle profile photo
+      if (req.files.photo) {
+        // Delete old photo if exists
+        if (user.photo && user.photo.filePath) {
+          await deleteFile(user.photo.filePath);
+        }
+        
+        const photoFile = req.files.photo[0];
+        const photoData = await uploadFile(
+          photoFile,
+          `users/${req.user._id}/photos/${Date.now()}-${photoFile.originalname}`,
+          req.user
+        );
+        
+        updateFields.photo = {
+          fileName: photoData.fileName,
+          fileUrl: photoData.fileUrl,
+          filePath: photoData.filePath,
+          fileSize: photoData.fileSize,
+          uploadedAt: new Date()
+        };
+      }
+      
+      // Handle resume upload
+      if (req.files.resume) {
+        // Delete old resume if exists
+        if (user.resume && user.resume.filePath) {
+          await deleteFile(user.resume.filePath);
+        }
+        
+        const resumeFile = req.files.resume[0];
+        const resumeData = await uploadFile(
+          resumeFile,
+          `users/${req.user._id}/resumes/${Date.now()}-${resumeFile.originalname}`,
+          req.user
+        );
+        
+        updateFields.resume = {
+          fileName: resumeData.fileName,
+          fileUrl: resumeData.fileUrl,
+          filePath: resumeData.filePath,
+          fileSize: resumeData.fileSize,
+          uploadedAt: new Date()
+        };
+      }
     }
     
     const updatedUser = await User.findByIdAndUpdate(

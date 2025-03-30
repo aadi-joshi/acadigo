@@ -7,9 +7,11 @@ import {
   DocumentTextIcon,
   ClipboardDocumentListIcon,
   PencilIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  UserCircleIcon,
+  DocumentIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import api from '../../services/api'; // Import the configured API service
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import BatchForm from '../../components/trainer/BatchForm';
@@ -33,20 +35,20 @@ export default function BatchDetail() {
       try {
         setLoading(true);
         
-        // Fetch batch details
-        const batchResponse = await axios.get(`/api/batches/${id}`);
+        // Fetch batch details - using api service instead of axios
+        const batchResponse = await api.get(`/batches/${id}`);
         setBatch(batchResponse.data);
         
-        // Fetch students in batch
-        const studentsResponse = await axios.get(`/api/batches/${id}/students`);
+        // Fetch students in batch - explicitly ask for full profile data
+        const studentsResponse = await api.get(`/batches/${id}/students?includeProfile=true`);
         setStudents(studentsResponse.data);
         
-        // Fetch assignments for this batch
-        const assignmentsResponse = await axios.get(`/api/assignments?batchId=${id}`);
+        // Fetch assignments for this batch - using api service instead of axios
+        const assignmentsResponse = await api.get(`/assignments?batchId=${id}`);
         setAssignments(assignmentsResponse.data);
         
-        // Fetch PPTs for this batch
-        const pptsResponse = await axios.get(`/api/ppts?batchId=${id}`);
+        // Fetch PPTs for this batch - using api service instead of axios
+        const pptsResponse = await api.get(`/ppts?batchId=${id}`);
         setPPTs(pptsResponse.data);
         
         setLoading(false);
@@ -64,7 +66,8 @@ export default function BatchDetail() {
     try {
       // If admin, fetch list of trainers for the dropdown
       if (localStorage.getItem('user') && JSON.parse(localStorage.getItem('user')).role === 'admin') {
-        const trainersResponse = await axios.get('/api/users?role=trainer');
+        // Use api service instead of axios
+        const trainersResponse = await api.get('/users?role=trainer');
         setTrainers(trainersResponse.data);
       }
       
@@ -77,7 +80,8 @@ export default function BatchDetail() {
   
   const handleBatchUpdate = async (formData) => {
     try {
-      const response = await axios.put(`/api/batches/${id}`, formData);
+      // Use api service instead of axios
+      const response = await api.put(`/batches/${id}`, formData);
       setBatch(response.data);
       toast.success('Batch updated successfully');
       setIsEditFormOpen(false);
@@ -91,6 +95,41 @@ export default function BatchDetail() {
     if (!dateString) return 'Not set';
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  // Enhanced resume link display with error handling
+  const renderResumeLink = (student) => {
+    if (!student.resume) return <div className="text-sm text-gray-400">-</div>;
+    
+    try {
+      return student.resume.fileUrl ? (
+        <a 
+          href={student.resume.fileUrl}
+          target="_blank"
+          rel="noopener noreferrer" 
+          className="text-primary-400 hover:text-primary-300 flex items-center"
+          onClick={() => logResumeView(student._id)}
+        >
+          <DocumentIcon className="h-4 w-4 mr-1" />
+          View
+        </a>
+      ) : (
+        <div className="text-sm text-gray-400">Upload pending</div>
+      );
+    } catch (e) {
+      console.error("Error rendering resume link:", e);
+      return <div className="text-sm text-red-400">Error loading resume</div>;
+    }
+  };
+
+  // Log when a resume is viewed
+  const logResumeView = async (studentId) => {
+    try {
+      await api.post(`/logs/user/${studentId}/resume/view`);
+    } catch (err) {
+      console.error("Failed to log resume view:", err);
+      // Non-critical error, don't show to user
+    }
   };
   
   if (loading) {
@@ -238,8 +277,12 @@ export default function BatchDetail() {
             <table className="min-w-full divide-y divide-gray-700">
               <thead>
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Photo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Parent</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Resume</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
@@ -247,10 +290,39 @@ export default function BatchDetail() {
                 {students.map(student => (
                   <tr key={student._id} className="hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {student.photo?.fileUrl ? (
+                        <img 
+                          src={student.photo.fileUrl} 
+                          alt={student.name} 
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center">
+                          <UserCircleIcon className="h-6 w-6 text-gray-400" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-white">{student.name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-300">{student.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-300">{student.contactNumber || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {student.parentName ? (
+                        <div>
+                          <div className="text-sm text-gray-300">{student.parentName}</div>
+                          <div className="text-xs text-gray-400">{student.parentContactNumber || '-'}</div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-400">-</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {renderResumeLink(student)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs rounded-full ${

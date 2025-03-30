@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getSubmissions, gradeSubmission } from '../../services/assignmentService';
 import { Dialog } from '@headlessui/react';
-import { XMarkIcon, CheckIcon, ArrowTopRightOnSquareIcon, PhotoIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckIcon, ArrowTopRightOnSquareIcon, PhotoIcon, XCircleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -35,7 +35,7 @@ const SubmissionsView = ({ assignment, batchName, onClose }) => {
 
   const handleGradeClick = (submission) => {
     setSelectedSubmission(submission);
-    setScore(submission.score || '');
+    setScore(submission.marks || '');
     setFeedback(submission.feedback || '');
     setFeedbackImage(null);
     setImagePreview(submission.feedbackImage?.fileUrl || null);
@@ -156,11 +156,28 @@ const SubmissionsView = ({ assignment, batchName, onClose }) => {
                     {submissions.map((submission) => (
                       <tr key={submission._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {submission.student.name}
+                          <div className="flex items-center">
+                            {submission.student?.photo?.fileUrl ? (
+                              <img 
+                                src={submission.student.photo.fileUrl} 
+                                alt={submission.student.name} 
+                                className="h-8 w-8 rounded-full mr-3 object-cover"
+                              />
+                            ) : (
+                              <UserCircleIcon className="h-8 w-8 text-gray-400 mr-3" />
+                            )}
+                            <div>
+                              <div>{submission.student.name}</div>
+                              <div className="text-xs text-gray-400">{submission.student.email}</div>
+                              {submission.student?.contactNumber && (
+                                <div className="text-xs text-gray-400">{submission.student.contactNumber}</div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {format(new Date(submission.submissionTime), 'MMM dd, yyyy h:mm a')}
-                          {submission.isLate && (
+                          {format(new Date(submission.submittedAt), 'MMM dd, yyyy h:mm a')}
+                          {submission.status === 'late' && (
                             <span className="ml-2 px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
                               Late
                             </span>
@@ -178,7 +195,7 @@ const SubmissionsView = ({ assignment, batchName, onClose }) => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {submission.score !== null ? `${submission.score}/${assignment.maxScore}` : 'Not graded'}
+                          {submission.marks !== undefined ? `${submission.marks}/${assignment.maxMarks}` : 'Not graded'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end items-center space-x-2">
@@ -255,13 +272,13 @@ const SubmissionsView = ({ assignment, batchName, onClose }) => {
               <form onSubmit={handleGradeSubmit}>
                 <div className="mb-4">
                   <label htmlFor="score" className="label">
-                    Score (out of {assignment.maxScore})
+                    Score (out of {assignment.maxMarks})
                   </label>
                   <input
                     id="score"
                     type="number"
                     min="0"
-                    max={assignment.maxScore}
+                    max={assignment.maxMarks}
                     className="input w-full"
                     value={score}
                     onChange={(e) => setScore(e.target.value)}

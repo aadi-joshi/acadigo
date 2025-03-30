@@ -1,6 +1,17 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const fileSchema = new mongoose.Schema({
+  fileName: String,
+  fileUrl: String,
+  filePath: String,
+  fileSize: Number,
+  uploadedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -38,7 +49,22 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
     default: null
-  }
+  },
+  // New student profile fields
+  contactNumber: {
+    type: String,
+    trim: true
+  },
+  parentName: {
+    type: String,
+    trim: true
+  },
+  parentContactNumber: {
+    type: String,
+    trim: true
+  },
+  photo: fileSchema,
+  resume: fileSchema
 }, {
   timestamps: true
 });

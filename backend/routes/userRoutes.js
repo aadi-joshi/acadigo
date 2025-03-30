@@ -9,14 +9,29 @@ const {
   getUsersByBatch
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
+const multer = require('multer');
 
 const router = express.Router();
+
+// Configure multer for memory storage
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  }
+});
 
 // Routes that need authentication
 router.use(protect);
 
 // Routes for all authenticated users
-router.put('/profile', updateProfile);
+router.put('/profile', 
+  upload.fields([
+    { name: 'photo', maxCount: 1 },
+    { name: 'resume', maxCount: 1 }
+  ]), 
+  updateProfile
+);
 
 // Routes restricted to admin
 router.route('/')

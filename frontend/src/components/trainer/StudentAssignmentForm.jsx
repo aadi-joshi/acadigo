@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import api from '../../services/api'; // Import the configured API service
 
 const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
   const [batchStudents, setBatchStudents] = useState([]);
@@ -16,13 +16,14 @@ const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null); // Clear any previous errors
         
-        // Fetch students assigned to this batch
-        const batchStudentsRes = await axios.get(`/api/batches/${batchId}/students`);
+        // Use the api service with proper endpoint and parameters
+        const batchStudentsRes = await api.get(`/batches/${batchId}/students`);
         setBatchStudents(batchStudentsRes.data);
         
-        // Fetch unassigned students
-        const allStudentsRes = await axios.get('/api/users?role=student&unassigned=true');
+        // Make sure we get all unassigned students plus exclude current batch
+        const allStudentsRes = await api.get(`/users?role=student&unassigned=true&excludeBatch=${batchId}`);
         setUnassignedStudents(allStudentsRes.data);
         
         setLoading(false);
@@ -51,23 +52,33 @@ const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
 
   const handleAddStudent = async (studentId) => {
     try {
-      await axios.post(`/api/batches/${batchId}/students`, { studentId });
+      setError(null); // Clear any errors
       
-      // Update local state
-      const student = unassignedStudents.find(s => s._id === studentId);
-      setBatchStudents([...batchStudents, student]);
-      setUnassignedStudents(unassignedStudents.filter(s => s._id !== studentId));
+      // Add loading indicator for better UX
+      const studentIndex = unassignedStudents.findIndex(s => s._id === studentId);
+      if (studentIndex === -1) return;
       
+      // Optimistic UI update
+      const student = unassignedStudents[studentIndex];
+      setBatchStudents(prev => [...prev, student]);
+      setUnassignedStudents(prev => prev.filter(s => s._id !== studentId));
+      
+      // Make the API call
+      await api.post(`/batches/${batchId}/students`, { studentId });
       toast.success('Student added to batch successfully');
     } catch (err) {
       console.error('Error adding student to batch:', err);
       toast.error(err.response?.data?.message || 'Error adding student to batch');
+      
+      // Revert the optimistic update
+      fetchData();
     }
   };
 
   const handleRemoveStudent = async (studentId) => {
     try {
-      await axios.delete(`/api/batches/${batchId}/students/${studentId}`);
+      // Use the api service instead of axios
+      await api.delete(`/batches/${batchId}/students/${studentId}`);
       
       // Update local state
       const student = batchStudents.find(s => s._id === studentId);
@@ -78,6 +89,26 @@ const StudentAssignmentForm = ({ isOpen, onClose, batchId }) => {
     } catch (err) {
       console.error('Error removing student from batch:', err);
       toast.error(err.response?.data?.message || 'Error removing student from batch');
+    }
+  };
+
+  // Helper function to reload data
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const batchStudentsRes = await api.get(`/batches/${batchId}/students`);
+      setBatchStudents(batchStudentsRes.data);
+      
+      const allStudentsRes = await api.get(`/users?role=student&unassigned=true&excludeBatch=${batchId}`);
+      setUnassignedStudents(allStudentsRes.data);
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching students:', err);
+      setError(err.response?.data?.message || 'Failed to load students');
+      setLoading(false);
     }
   };
 
