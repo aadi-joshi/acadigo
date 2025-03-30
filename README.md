@@ -1,84 +1,60 @@
-# 🚀 PPT Access Control System
-
-![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+# ACADIGO
 
 *A powerful, comprehensive web-based system for managing access to presentations and assignments with role-based permissions.*
 
-## ✨ Features
+## Team Members
+- Aadi Joshi
+- Nihit Shevade
+- Varad Rathor
+- Sharwil Hodgar
 
-- **🔐 Multiple User Roles**: Admin, Trainer, and Student with appropriate permissions
-- **📊 Intuitive Dashboard**: Role-specific dashboards with quick access to all features
-- **📑 PPT Management**: Upload, organize, view, and track presentations
-- **📝 Assignment System**: Create assignments, set deadlines, submit solutions, and grade with feedback
-- **👥 Batch Management**: Organize students into batches for streamlined content delivery
-- **📌 Access Control**: Fine-grained control over who can access which materials
-- **📊 Activity Tracking**: Comprehensive tracking of student access and engagement
-- **📧 Email Notifications**: Automatic alerts for deadlines, new uploads, and grading events
-- **🌙 Dark Mode**: Built with modern UI and dark theme for reduced eye strain
-- **📱 Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+## Features
 
-## 🚀 Getting Started
+- **Multiple User Roles**: Admin, Trainer, and Student with appropriate permissions
+- **Intuitive Dashboard**: Role-specific dashboards with quick access to all features
+- **PPT Management**: Upload, organize, view, and track presentations
+- **Assignment System**: Create assignments, set deadlines, submit solutions, and grade withfeedback
+- **Batch Management**: Organize students into batches for streamlined content delivery
+- **Access Control**: Fine-grained control over who can access which materials
+- **Activity Tracking**: Comprehensive tracking of student access and engagement
+- **Email Notifications**: Automatic alerts for deadlines, new uploads, and grading events
+- **Dark Mode**: Built with modern UI and dark theme for reduced eye strain
+- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+- **Advanced Analytics**: System-wide usage metrics, PPT views, download tracking, and userengagement statistics
+- **Profile Management**: User profile customization with photo uploads and profile information
+- **Resume Management**: Student resume/CV upload and tracking functionality
+- **Visual Feedback System**: Trainers can provide both text and image-based feedback on submissions
+- **Submission Timeliness Tracking**: System automatically tracks if assignments are submitted on time or late
+- **System Debug Tools**: Administrative tools for system maintenance and troubleshooting
+- **Security Settings**: Configurable security levels and access control mechanisms
+- **File Upload Management**: Comprehensive file upload system with size limits and type restrictions
 
-### Prerequisites
+## User Roles and Permissions
 
-- Node.js (v14+)
-- MongoDB (local or Atlas cloud)
-- Firebase account (for Storage)
-- Email service credentials (for notifications)
-
-### Installation
-
-1. Clone the repository
-   ```bash
-   git clone https://github.com/yourusername/ppt-access-control.git
-   cd ppt-access-control
-   ```
-
-2. Install dependencies for both frontend and backend
-   ```bash
-   cd frontend
-   npm install
-   cd ../backend
-   npm install
-   ```
-
-3. Set up environment variables
-   - Copy `.env.example` to `.env` in both frontend and backend directories
-   - Update the variables with your configurations
-
-4. Start the development servers
-   - Backend: `npm run dev` (from the backend directory)
-   - Frontend: `npm run dev` (from the frontend directory)
-
-5. Access the application at `http://localhost:5173`
-
-## 🧑‍💻 User Roles and Permissions
-
-### 👑 Admin
+### Admin
 - Manage all users (create, edit, delete)
-- Configure system settings
+- Configure system settings and security parameters
 - Access all trainer and student features
-- View system-wide analytics
+- View system-wide analytics and debug information
+- Monitor system performance and usage statistics
 
-### 👨‍🏫 Trainer
+### Trainer
 - Create and manage batches
 - Upload and manage PPTs
 - Create assignments and set deadlines
-- Grade student submissions
+- Grade student submissions with text and image feedback
 - View student progress and engagement metrics
+- Track student profiles and resume information
 
-### 👨‍🎓 Student
-- View assigned PPTs
-- Download learning materials
+### Student
+- View assigned PPTs and download learning materials
 - Submit assignments before deadlines
-- Receive grades and feedback
-- Track personal progress
+- Receive grades and detailed feedback
+- Track personal progress and submission history
+- Manage personal profile and upload resume/CV
+- View submission timeliness statistics
 
-## 🔄 User Flow Diagram
+## User Flow Diagram
 
 ```mermaid
 graph TD
@@ -133,65 +109,20 @@ graph TD
     G -.->|Notify| F
 ```
 
-## 📊 System Architecture
-
-The application is built with a modern tech stack following a client-server architecture:
-
-1. **Frontend (Client)**
-   - React for UI components and state management
-   - React Router for navigation
-   - Tailwind CSS for styling
-   - Headless UI for accessible components
-   - Axios for API communication
-
-2. **Backend (Server)**
-   - Express.js RESTful API
-   - JWT authentication
-   - Role-based access control
-   - Rate limiting for API protection
-
-3. **Database**
-   - MongoDB for data storage
-   - Mongoose for data modeling
-
-4. **External Services**
-   - Firebase Storage for file storage
-   - Nodemailer for email notifications
-
-## 🧪 Testing
-
-Run the test suite to ensure everything is working correctly:
-
-```bash
-cd backend
-npm test
-
-cd ../frontend
-npm test
-```
-
-## 🚢 Deployment
-
-### Backend Deployment
-1. Set up environment variables in your hosting platform
-2. Deploy the backend to your preferred Node.js hosting (Heroku, Railway, DigitalOcean, etc.)
-3. Ensure MongoDB connection is properly configured
-
-### Frontend Deployment
-1. Update the API URL in the frontend environment
-2. Build the frontend: `npm run build`
-3. Deploy the build folder to a static hosting service (Vercel, Netlify, etc.)
-
-## 🛠️ Tech Stack
-
+## Tech Stack
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 - **Frontend**: React, Vite, Tailwind CSS, Headless UI, React Router
 - **Backend**: Node.js, Express, JWT Authentication
 - **Database**: MongoDB with Mongoose
-- **Storage**: Firebase Storage for files
+- **Storage**: Supabase Storage for files
 - **Email**: Nodemailer for notifications
 - **Deployment**: Ready for Vercel, Railway, or any modern hosting platform
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 ppt-access-control/
